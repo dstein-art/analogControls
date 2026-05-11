@@ -217,6 +217,9 @@ p5.prototype.registerMethod('pre', function () {
   }
   _analogWasPressed = down;
 
+  // Advance spring-back animations
+  for (const c of _analogRegistry) c._tickSpring();
+
   // Drain wheel queue
   for (const e of _analogWheelQ) {
     for (const c of _analogRegistry) c.mouseWheel(e);
@@ -251,6 +254,14 @@ class AnalogControl {
     this.theme    = Object.assign({}, base, opts.theme ?? {});
     this._hovered = false;
     this._active  = false;
+
+    this.springBack     = opts.springBack     ?? false;
+    this.springDuration = opts.springDuration ?? 1.0;
+    this._springActive  = false;
+    this._springStartMs = 0;
+    this._springFrom    = null;
+    this._springDefault = this.value; // subclasses override for non-value fields
+
     _analogRegistry.push(this);
   }
 
@@ -340,6 +351,33 @@ class AnalogControl {
   // Call at the top of every concrete draw() override to prevent
   // the auto-draw post hook from rendering the control a second time.
   _markDrawn() { _drawnThisFrame.add(this); }
+
+  // ── Spring-back ───────────────────────────────────────────────────────────
+  // Continuously animates value back to _springDefault after release.
+  // Subclasses with non-value state (XYPad, Switch, Rotary) override these.
+
+  _startSpring() {
+    if (!this.springBack || this._springDefault === null) return;
+    this._springActive  = true;
+    this._springStartMs = millis();
+    this._springFrom    = this.value;
+  }
+
+  _cancelSpring() {
+    this._springActive = false;
+  }
+
+  _tickSpring() {
+    if (!this._springActive) return;
+    const t    = Math.min((millis() - this._springStartMs) / 1000 / this.springDuration, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // cubic ease-out
+    this.value = lerp(this._springFrom, this._springDefault, ease);
+    if (this.onChange) this.onChange(this.value);
+    if (t >= 1) {
+      this.value         = this._springDefault;
+      this._springActive = false;
+    }
+  }
 
   // Subclasses override these
   draw()          {}
@@ -629,6 +667,7 @@ class AnalogSlider extends AnalogControl {
   mousePressed() {
     if (this.disabled) return;
     if (this._capHit(mouseX, mouseY)) {
+      this._cancelSpring();
       this._active    = true;
       this._dragStart = this.horizontal
         ? { mx: mouseX, value: this.value }
@@ -641,6 +680,7 @@ class AnalogSlider extends AnalogControl {
       this._active    = false;
       this._dragStart = null;
       if (this.onRelease) this.onRelease(this.value);
+      this._startSpring();
     }
   }
 
@@ -990,6 +1030,7 @@ class Dial extends AnalogControl {
   mousePressed() {
     if (this.disabled) return;
     if (this._containsPoint(mouseX, mouseY)) {
+      this._cancelSpring();
       this._active    = true;
       this._dragStart = { my: mouseY, value: this.value };
     }
@@ -1000,6 +1041,7 @@ class Dial extends AnalogControl {
       this._active    = false;
       this._dragStart = null;
       if (this.onRelease) this.onRelease(this.value);
+      this._startSpring();
     }
   }
 
@@ -1037,6 +1079,7 @@ class AnalogSwitch extends AnalogControl {
     this.width    = opts.width    ?? 48;
     this.height   = opts.height   ?? (this.states.length > 2 ? this.states.length * 26 + 20 : 70);
     this.onChange = opts.onChange ?? null;        // called with (stateIndex, stateLabel)
+    this._springDefault = this.state;             // spring snaps back to initial state
   }
 
   _panelW() { return this.width; }
@@ -1162,16 +1205,41 @@ class AnalogSwitch extends AnalogControl {
     if (this.disabled) return;
     const slot = this._slotAt(mouseX, mouseY);
     if (slot < 0) return;
+    this._cancelSpring();
     if (this.states.length === 2) {
-      // Toggle between 0 and 1
       this.state = this.state === 0 ? 1 : 0;
     } else {
       this.state = slot;
     }
     if (this.onChange) this.onChange(this.state, this.states[this.state]);
+    this._active = true;
   }
 
-  mouseReleased() {}
+  mouseReleased() {
+    if (this._active) {
+      this._active = false;
+      this._startSpring();
+    }
+  }
+
+  // Spring for discrete state: snap back after springDuration seconds
+  _startSpring() {
+    if (!this.springBack) return;
+    this._springActive  = true;
+    this._springStartMs = millis();
+  }
+
+  _tickSpring() {
+    if (!this._springActive) return;
+    if ((millis() - this._springStartMs) / 1000 >= this.springDuration) {
+      const prev = this.state;
+      this.state = this._springDefault;
+      this._springActive = false;
+      if (this.state !== prev && this.onChange)
+        this.onChange(this.state, this.states[this.state]);
+    }
+  }
+
   mouseWheel(_e)  {}
 }
 

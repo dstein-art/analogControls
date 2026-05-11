@@ -121,6 +121,8 @@ class XYPad extends AnalogControl {
     this.onChangeY = opts.onChangeY ?? null;
     this.crosshairColor = opts.crosshairColor ?? this.theme.capIndicator;
     this._pad = 10;
+    this._springDefaultX = this.valueX;
+    this._springDefaultY = this.valueY;
   }
 
   _normX() {
@@ -190,6 +192,7 @@ class XYPad extends AnalogControl {
   mousePressed() {
     if (this.disabled) return;
     if (this._containsPoint(mouseX, mouseY)) {
+      this._cancelSpring();
       this._active = true;
       this._updateXY(mouseX, mouseY);
     }
@@ -199,6 +202,31 @@ class XYPad extends AnalogControl {
     if (this._active) {
       this._active = false;
       if (this.onRelease) this.onRelease(this.valueX, this.valueY);
+      this._startSpring();
+    }
+  }
+
+  _startSpring() {
+    if (!this.springBack) return;
+    this._springActive  = true;
+    this._springStartMs = millis();
+    this._springFromX   = this.valueX;
+    this._springFromY   = this.valueY;
+  }
+
+  _tickSpring() {
+    if (!this._springActive) return;
+    const t    = Math.min((millis() - this._springStartMs) / 1000 / this.springDuration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    this.valueX = lerp(this._springFromX, this._springDefaultX, ease);
+    this.valueY = lerp(this._springFromY, this._springDefaultY, ease);
+    if (this.onChange)  this.onChange(this.valueX, this.valueY);
+    if (this.onChangeX) this.onChangeX(this.valueX);
+    if (this.onChangeY) this.onChangeY(this.valueY);
+    if (t >= 1) {
+      this.valueX = this._springDefaultX;
+      this.valueY = this._springDefaultY;
+      this._springActive = false;
     }
   }
 
@@ -493,6 +521,7 @@ class RotarySelector extends AnalogControl {
     this._dragY       = null;
     this._stateAtDrag = 0;
     this._angleAtDrag = 0;
+    this._springDefault = this.state; // spring snaps back to initial option
   }
 
   // ── geometry ───────────────────────────────────────────────────────────────
@@ -697,12 +726,12 @@ class RotarySelector extends AnalogControl {
   mousePressed() {
     if (this.disabled) return;
     if (this._containsPoint(mouseX, mouseY)) {
+      this._cancelSpring();
       this._active       = true;
       this._dragY        = mouseY;
       this._stateAtDrag  = this.state;
       this._angleAtDrag  = this._gearAngle;
       this._drumOffset   = 0;
-      // Record whether the press landed in the teeth column and which half
       this._teethPress   = this._inTeeth(mouseX, mouseY);
       this._teethPressBot = mouseY >= this.y + this.height / 2;
     }
@@ -738,6 +767,25 @@ class RotarySelector extends AnalogControl {
       this._dragY       = null;
       this._teethPress  = false;
       if (this.onRelease) this.onRelease(this.state, this.options[this.state]);
+      this._startSpring();
+    }
+  }
+
+  // Spring for discrete state: snap back after springDuration seconds
+  _startSpring() {
+    if (!this.springBack) return;
+    this._springActive  = true;
+    this._springStartMs = millis();
+  }
+
+  _tickSpring() {
+    if (!this._springActive) return;
+    if ((millis() - this._springStartMs) / 1000 >= this.springDuration) {
+      const prev = this.state;
+      this.state = this._springDefault;
+      this._springActive = false;
+      if (this.state !== prev && this.onChange)
+        this.onChange(this.state, this.options[this.state]);
     }
   }
 
@@ -811,16 +859,18 @@ class MultiSlider extends AnalogControl {
 
     // Shared defaults applied to every child slider
     const base = {
-      horizontal: this.horizontal,
-      height:     opts.height    ?? (this.horizontal ? 44 : 180),
-      width:      opts.width,   // undefined → AnalogSlider auto-sizes
-      min:        opts.min      ?? 0,
-      max:        opts.max      ?? 1,
-      readout:    opts.readout  ?? 'raw',
-      decimals:   opts.decimals ?? 2,
-      scale:      opts.scale    ?? 'linear',
-      showScale:  opts.showScale ?? !this.horizontal,
-      theme:      opts.theme    ?? {},
+      horizontal:     this.horizontal,
+      height:         opts.height         ?? (this.horizontal ? 44 : 180),
+      width:          opts.width,         // undefined → AnalogSlider auto-sizes
+      min:            opts.min            ?? 0,
+      max:            opts.max            ?? 1,
+      readout:        opts.readout        ?? 'raw',
+      decimals:       opts.decimals       ?? 2,
+      scale:          opts.scale          ?? 'linear',
+      showScale:      opts.showScale      ?? !this.horizontal,
+      springBack:     opts.springBack     ?? false,
+      springDuration: opts.springDuration ?? 1.0,
+      theme:          opts.theme          ?? {},
     };
 
     let curX = this.x;
@@ -935,16 +985,18 @@ class MultiDial extends AnalogControl {
     this._children = [];
 
     const base = {
-      size:      opts.size      ?? 70,
-      min:       opts.min       ?? 0,
-      max:       opts.max       ?? 1,
-      readout:   opts.readout   ?? 'raw',
-      decimals:  opts.decimals  ?? 2,
-      scale:     opts.scale     ?? 'linear',
-      showScale: opts.showScale ?? false,
-      showKnob:  opts.showKnob  ?? true,
-      dialStyle: opts.dialStyle ?? 'classic',
-      theme:     opts.theme     ?? {},
+      size:           opts.size           ?? 70,
+      min:            opts.min            ?? 0,
+      max:            opts.max            ?? 1,
+      readout:        opts.readout        ?? 'raw',
+      decimals:       opts.decimals       ?? 2,
+      scale:          opts.scale          ?? 'linear',
+      showScale:      opts.showScale      ?? false,
+      showKnob:       opts.showKnob       ?? true,
+      dialStyle:      opts.dialStyle      ?? 'classic',
+      springBack:     opts.springBack     ?? false,
+      springDuration: opts.springDuration ?? 1.0,
+      theme:          opts.theme          ?? {},
     };
 
     let curX = this.x;

@@ -565,6 +565,8 @@
         <tr><td>decimals</td><td>number</td><td>2</td><td>Decimal places for the <code>'raw'</code> readout.</td></tr>
         <tr><td>showScale</td><td>boolean</td><td>true / false</td><td>Draw tick marks and numeric labels along the track. Defaults <code>true</code> vertical, <code>false</code> horizontal.</td></tr>
         <tr><td>showFader</td><td>boolean</td><td>true</td><td>Show or hide the draggable cap. <code>false</code> = display-only meter.</td></tr>
+        <tr><td>springBack</td><td>boolean</td><td>false</td><td>When <code>true</code>, the fader animates back to its initial value after mouse/touch release.</td></tr>
+        <tr><td>springDuration</td><td>number</td><td>1.0</td><td>Seconds for the spring animation to complete.</td></tr>
       </tbody>
     </table>
 
@@ -606,6 +608,8 @@
         <tr><td>showScale</td><td>boolean</td><td>false</td><td>Draw tick marks and labels around the arc. Increase <code>size</code> if labels clip.</td></tr>
         <tr><td>showKnob</td><td>boolean</td><td>true</td><td>Show or hide the knob body. <code>false</code> = arc-only display (used by VUDial).</td></tr>
         <tr><td>dialStyle</td><td>string</td><td>'classic'</td><td>Knob visual style — <code>'classic'</code> · <code>'rubber'</code> · <code>'grooved'</code> · <code>'pointer'</code>. See dial styles below.</td></tr>
+        <tr><td>springBack</td><td>boolean</td><td>false</td><td>When <code>true</code>, the knob animates back to its initial value after mouse/touch release.</td></tr>
+        <tr><td>springDuration</td><td>number</td><td>1.0</td><td>Seconds for the spring animation to complete.</td></tr>
       </tbody>
     </table>
 
@@ -814,6 +818,8 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
         <tr><td>onChangeY</td><td>function</td><td>null</td><td>Called with the new Y value when it changes.</td></tr>
         <tr><td>onChange</td><td>function</td><td>null</td><td>Called with <code>(valueX, valueY)</code> when either axis changes.</td></tr>
         <tr><td>onRelease</td><td>function</td><td>null</td><td>Called with <code>(valueX, valueY)</code> on release.</td></tr>
+        <tr><td>springBack</td><td>boolean</td><td>false</td><td>When <code>true</code>, both axes animate back to their initial values after mouse/touch release.</td></tr>
+        <tr><td>springDuration</td><td>number</td><td>1.0</td><td>Seconds for the spring animation to complete.</td></tr>
       </tbody>
     </table>
 
@@ -833,6 +839,26 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
 });</textarea>
       </div>
       <iframe class="example-frame" src="example.html?c=xypad" width="260" height="260" scrolling="no" frameborder="0" loading="lazy" title="XYPad live example"></iframe>
+    </div>
+
+    <h3>Example — spring back to center</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const pad = new XYPad({
+  x: 20, y: 22,
+  width: 220, height: 200,
+  minX: -1, maxX: 1,
+  minY: -1, maxY: 1,
+  valueX: 0, valueY: 0,
+  label: 'XY  (spring)',
+  crosshairColor: '#ff6600',
+  springBack: true,
+  springDuration: 0.6,
+  onChange: (vx, vy) => console.log(vx, vy),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=xypad_spring" width="260" height="260" scrolling="no" frameborder="0" loading="lazy" title="XYPad spring-back live example"></iframe>
     </div>
   </section>
 
@@ -957,6 +983,8 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
         <tr><td>label</td><td>string</td><td>''</td><td>Group label (not drawn — available for identification).</td></tr>
         <tr><td>onChange</td><td>function</td><td>null</td><td>Called with a <code>{ name: value, … }</code> object when any slider changes.</td></tr>
         <tr><td>onRelease</td><td>function</td><td>null</td><td>Called with a <code>{ name: value, … }</code> object on mouse/touch release.</td></tr>
+        <tr><td>springBack</td><td>boolean</td><td>false</td><td>When <code>true</code>, all sliders animate back to their initial values after release. Can be overridden per-slider.</td></tr>
+        <tr><td>springDuration</td><td>number</td><td>1.0</td><td>Seconds for the spring animation to complete. Can be overridden per-slider.</td></tr>
         <tr><td>theme</td><td>object</td><td>{}</td><td>Shared theme override applied to all children. See <a href="#themes">Themes</a>.</td></tr>
       </tbody>
     </table>
@@ -1008,7 +1036,7 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
       <iframe class="example-frame" src="example.html?c=multislider" width="350" height="265" scrolling="no" frameborder="0" loading="lazy" title="MultiSlider vertical live example"></iframe>
     </div>
 
-    <h3>Example — horizontal</h3>
+    <h3>Example — horizontal with a spring-back override on one slider</h3>
     <div class="example-row">
       <div class="live-editor">
         <div class="live-hint">editable — changes update the preview</div>
@@ -1022,13 +1050,14 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
   sliders: {
     '60Hz':  0,
     '250Hz': 0,
-    '2kHz':  0,
+    // 2kHz springs back to 0 after 0.8s — others stay put
+    '2kHz':  { value: 0, springBack: true, springDuration: 0.8 },
     '8kHz':  0,
   },
   onChange: v => console.log(v),
 });</textarea>
       </div>
-      <iframe class="example-frame" src="example.html?c=multislider_h" width="220" height="230" scrolling="no" frameborder="0" loading="lazy" title="MultiSlider horizontal live example"></iframe>
+      <iframe class="example-frame" src="example.html?c=multislider_h_spring" width="220" height="230" scrolling="no" frameborder="0" loading="lazy" title="MultiSlider horizontal spring live example"></iframe>
     </div>
   </section>
 
@@ -1058,6 +1087,8 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
         <tr><td>gap</td><td>number</td><td>4</td><td>Pixel gap between adjacent dials.</td></tr>
         <tr><td>onChange</td><td>function</td><td>null</td><td>Called with <code>{ name: value, … }</code> when any dial changes.</td></tr>
         <tr><td>onRelease</td><td>function</td><td>null</td><td>Called with <code>{ name: value, … }</code> on mouse/touch release.</td></tr>
+        <tr><td>springBack</td><td>boolean</td><td>false</td><td>When <code>true</code>, all dials animate back to their initial values after release. Can be overridden per-dial.</td></tr>
+        <tr><td>springDuration</td><td>number</td><td>1.0</td><td>Seconds for the spring animation to complete. Can be overridden per-dial.</td></tr>
         <tr><td>theme</td><td>object</td><td>{}</td><td>Shared theme override. See <a href="#themes">Themes</a>.</td></tr>
       </tbody>
     </table>
