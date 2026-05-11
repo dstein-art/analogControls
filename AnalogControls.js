@@ -96,9 +96,6 @@ const AnalogThemes = {
   },
 };
 
-// Backward-compatible alias — still usable as a per-control theme override base
-const AnalogTheme = AnalogThemes.black;
-
 function analogBackground() {
   const theme = AnalogThemes[AnalogStyle] ?? AnalogThemes.black;
   background(theme.bg);
@@ -1246,13 +1243,11 @@ class AnalogSwitch extends AnalogControl {
 // ─── Export (global scope for p5 sketches) ───────────────────────────────────
 window.AnalogStyle       = AnalogStyle;    // read-only reflection; set via AnalogStyle = '...'
 window.AnalogThemes      = AnalogThemes;
-window.AnalogTheme       = AnalogTheme;   // backward compat (black preset)
 window.analogBackground  = analogBackground;
 window.analogReset       = analogReset;
 window.analogControls    = function() { return [..._analogRegistry]; };
 window.analogFullReset   = function() { _analogRegistry.length = 0; _drawnThisFrame.clear(); _analogWasPressed = false; _analogWired = false; };
 window.AnalogControl     = AnalogControl;
 window.AnalogSlider      = AnalogSlider;
-window.Slider            = AnalogSlider;  // backward-compat alias
 window.AnalogSwitch      = AnalogSwitch;
 window.Dial              = Dial;
