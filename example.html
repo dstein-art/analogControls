@@ -41,8 +41,9 @@ const SIZES = {
   dialpointer:   [170, 170],
   slider_wheel:  [100, 265],
   slider_button: [100, 265],
-  gridpad_toggle:  [160, 155],
-  gridpad_percent: [160, 155],
+  gridpad_toggle:        [160, 155],
+  gridpad_percent:       [160, 155],
+  gridpad_colorselect:   [160, 155],
   adsr:            [260, 160],
   tagSelector:     [260, 130],
   rangeslider:     [110, 265],
@@ -367,6 +368,23 @@ const vel = new GridPad({
   cellSize: 20,
   hGroup: 2, vGroup: 2,
   label: ${label || "'VELOCITY'"},
+  onChange: v => console.log(v),
+});`,
+
+  gridpad_colorselect: `\
+const seq = new GridPad({
+  x: 20, y: 22,
+  rows: 4, cols: 4,
+  mode: 'colorselect',
+  cellSize: 20,
+  hGroup: 2, vGroup: 2,
+  label: ${label || "'COLOR'"},
+  options: [
+    { color: '#222222', value: 'off'   },
+    { color: '#cc3300', value: 'red'   },
+    { color: '#0055cc', value: 'blue'  },
+    { color: '#22aa44', value: 'green' },
+  ],
   onChange: v => console.log(v),
 });`,
 

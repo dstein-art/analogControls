@@ -1441,9 +1441,25 @@ class GridPad extends AnalogControl {
     this._rate    = opts.rate     ?? 0.02;
     this._pad     = 6;
 
+    // Normalize options for 'colorselect' mode.
+    // Accepts string[] or {color,value?}[] — value defaults to the color string.
+    this._options = (opts.options ?? []).map(o =>
+      (typeof o === 'string') ? { color: o, value: o }
+                              : { color: o.color, value: o.value ?? o.color }
+    );
+
     const iv = opts.values;
-    this._vals     = Array.from({ length: this.rows }, (_, r) =>
-      Array.from({ length: this.cols }, (_, c) => iv?.[r]?.[c] ?? 0)
+    this._vals = Array.from({ length: this.rows }, (_, r) =>
+      Array.from({ length: this.cols }, (_, c) => {
+        const raw = iv?.[r]?.[c] ?? 0;
+        if (this.mode === 'colorselect') {
+          // Accept a numeric index directly, or match by semantic value/color.
+          if (typeof raw === 'number') return constrain(Math.round(raw), 0, Math.max(0, this._options.length - 1));
+          const idx = this._options.findIndex(o => o.value === raw || o.color === raw);
+          return idx >= 0 ? idx : 0;
+        }
+        return raw;
+      })
     );
     this._initVals = this._vals.map(row => [...row]);
 
@@ -1503,11 +1519,27 @@ class GridPad extends AnalogControl {
 
   // ── public API ────────────────────────────────────────────────────────────────
 
-  get values() { return this._vals.map(row => [...row]); }
-  getValue(r, c) { return this._vals[r]?.[c] ?? 0; }
+  get values() {
+    if (this.mode === 'colorselect') {
+      return this._vals.map(row => row.map(idx => this._options[idx]?.value ?? null));
+    }
+    return this._vals.map(row => [...row]);
+  }
+
+  getValue(r, c) {
+    if (this.mode === 'colorselect') return this._options[this._vals[r]?.[c]]?.value ?? null;
+    return this._vals[r]?.[c] ?? 0;
+  }
+
   setValue(r, c, v) {
     if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return;
-    this._vals[r][c] = this.mode === 'toggle' ? (v ? 1 : 0) : constrain(v, 0, 1);
+    if (this.mode === 'colorselect') {
+      this._vals[r][c] = constrain(Math.round(v), 0, Math.max(0, this._options.length - 1));
+    } else if (this.mode === 'toggle') {
+      this._vals[r][c] = v ? 1 : 0;
+    } else {
+      this._vals[r][c] = constrain(v, 0, 1);
+    }
   }
 
   // ── drawing ───────────────────────────────────────────────────────────────────
@@ -1534,6 +1566,9 @@ class GridPad extends AnalogControl {
         if (this.mode === 'button') {
           const pressed = this._pressedCell?.r === r && this._pressedCell?.c === c;
           fill(pressed ? litC : dimC);
+        } else if (this.mode === 'colorselect') {
+          const optColor = this._options[this._vals[r][c]]?.color;
+          fill(optColor ? color(optColor) : dimC);
         } else {
           const val = this._vals[r][c];
           fill(this.mode === 'toggle' ? (val ? litC : dimC) : lerpColor(dimC, litC, val));
@@ -1627,6 +1662,16 @@ class GridPad extends AnalogControl {
     if (this.mode === 'toggle') {
       this._vals[r][c] = this._vals[r][c] ? 0 : 1;
       if (this.onChange) this.onChange(this.values);
+      return;
+    }
+
+    if (this.mode === 'colorselect') {
+      const n = this._options.length;
+      if (n > 0) {
+        const dir = (mouseButton === RIGHT) ? -1 : 1;
+        this._vals[r][c] = ((this._vals[r][c] + dir) % n + n) % n;
+        if (this.onChange) this.onChange(this.values);
+      }
       return;
     }
 

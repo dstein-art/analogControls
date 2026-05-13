@@ -1234,7 +1234,7 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
   <!-- GridPad -->
   <section id="gridpad">
     <h2>GridPad</h2>
-    <p class="desc">A 2-D grid of cells with three modes: <strong>toggle</strong> flips each cell 0 ↔ 1 on click; <strong>percent</strong> raises or lowers each cell's 0–1 value while the mouse is held; <strong>button</strong> treats each cell as a momentary key with press/release callbacks and no stored value. Optional horizontal and vertical grouping draws a bevel separator every N cells. Double-click the label to reset all cells to their initial values.</p>
+    <p class="desc">A 2-D grid of cells with four modes: <strong>toggle</strong> flips each cell 0 ↔ 1 on click; <strong>percent</strong> raises or lowers each cell's 0–1 value while the mouse is held; <strong>button</strong> treats each cell as a momentary key with press/release callbacks and no stored value; <strong>colorselect</strong> cycles each cell through a list of colours on each click, with each colour mapped to a semantic value. Optional horizontal and vertical grouping draws a bevel separator every N cells. Double-click the label to reset all cells to their initial values.</p>
 
     <h3>Options</h3>
     <table class="opts">
@@ -1243,17 +1243,18 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
         <tr><td>x, y</td><td>number</td><td>0</td><td>Top-left position.</td></tr>
         <tr><td>rows</td><td>number</td><td>4</td><td>Number of rows.</td></tr>
         <tr><td>cols</td><td>number</td><td>4</td><td>Number of columns.</td></tr>
-        <tr><td>mode</td><td>string</td><td>'toggle'</td><td><code>'toggle'</code> — click to flip 0/1 · <code>'percent'</code> — hold to raise/lower · <code>'button'</code> — momentary press, no stored value.</td></tr>
+        <tr><td>mode</td><td>string</td><td>'toggle'</td><td><code>'toggle'</code> — click to flip 0/1 · <code>'percent'</code> — hold to raise/lower · <code>'button'</code> — momentary press · <code>'colorselect'</code> — click to cycle through colours.</td></tr>
+        <tr><td>options</td><td>array</td><td>[]</td><td><em>colorselect mode only.</em> Each entry is either a colour string (<code>'red'</code>, <code>'#ff0000'</code>) or an object <code>{ color, value }</code> where <code>value</code> is the semantic value returned by <code>onChange</code>. When <code>value</code> is omitted it defaults to the colour string.</td></tr>
         <tr><td>cellSize</td><td>number</td><td>20</td><td>Pixel size of each square cell.</td></tr>
         <tr><td>cellGap</td><td>number</td><td>2</td><td>Gap in pixels between cells.</td></tr>
         <tr><td>hGroup</td><td>number</td><td>0</td><td>Draw a bevel separator every N columns. 0 disables.</td></tr>
         <tr><td>vGroup</td><td>number</td><td>0</td><td>Draw a bevel separator every N rows. 0 disables.</td></tr>
         <tr><td>groupGap</td><td>number</td><td>4</td><td>Extra pixels added at each group boundary.</td></tr>
-        <tr><td>values</td><td>array</td><td>all 0</td><td>Initial 2-D array <code>[[row][col]]</code>. Ignored in button mode.</td></tr>
+        <tr><td>values</td><td>array</td><td>all 0</td><td>Initial 2-D array <code>[[row][col]]</code>. For colorselect, pass indices <em>or</em> semantic values — both are accepted. Ignored in button mode.</td></tr>
         <tr><td>rate</td><td>number</td><td>0.02</td><td>Percent change per frame while mouse is held (percent mode only).</td></tr>
         <tr><td>label</td><td>string</td><td>''</td><td>Label drawn below the grid.</td></tr>
         <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
-        <tr><td>onChange(values)</td><td>function</td><td>null</td><td>Called with a 2-D copy of values when any cell changes (toggle / percent modes).</td></tr>
+        <tr><td>onChange(values)</td><td>function</td><td>null</td><td>Called with a 2-D copy of values when any cell changes. In colorselect mode the grid contains the semantic <code>value</code> for each cell.</td></tr>
         <tr><td>onRelease(…)</td><td>function</td><td>null</td><td>Toggle/percent: called with values on release. Button mode: called with <code>(row, col)</code> on release.</td></tr>
         <tr><td>onPress(row, col)</td><td>function</td><td>null</td><td>Button mode only — called with the row and column of the pressed cell.</td></tr>
       </tbody>
@@ -1288,13 +1289,23 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
       </tbody>
     </table>
 
+    <h3>Interaction — colorselect mode</h3>
+    <table class="opts">
+      <thead><tr><th>Action</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>Left click</td><td>Advance to the next colour in <code>options</code>, wrapping around.</td></tr>
+        <tr><td>Right click</td><td>Step back to the previous colour.</td></tr>
+        <tr><td>Double-click label</td><td>Reset all cells to their initial colour (index 0 by default).</td></tr>
+      </tbody>
+    </table>
+
     <h3>Public API</h3>
     <table class="opts">
       <thead><tr><th>Member</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td><code>values</code> (getter)</td><td>Returns a deep copy of the 2-D values array (toggle / percent modes).</td></tr>
-        <tr><td><code>getValue(r, c)</code></td><td>Returns the value at row <code>r</code>, column <code>c</code>.</td></tr>
-        <tr><td><code>setValue(r, c, v)</code></td><td>Sets the value at <code>(r, c)</code>. Clamped to 0–1; snapped to 0/1 in toggle mode.</td></tr>
+        <tr><td><code>values</code> (getter)</td><td>Returns a deep copy of the 2-D values array. In colorselect mode returns semantic values, not indices.</td></tr>
+        <tr><td><code>getValue(r, c)</code></td><td>Returns the value at row <code>r</code>, column <code>c</code>. In colorselect mode returns the semantic value of the current colour.</td></tr>
+        <tr><td><code>setValue(r, c, v)</code></td><td>Sets the value at <code>(r, c)</code>. In toggle mode snapped to 0/1; percent clamped 0–1; colorselect accepts an index integer.</td></tr>
       </tbody>
     </table>
 
@@ -1330,6 +1341,29 @@ sw.states[sw.state] <span class="cmt">// active label string</span></code></pre>
 });</textarea>
       </div>
       <iframe class="example-frame" src="example.html?c=gridpad_percent" width="160" height="155" scrolling="no" frameborder="0" loading="lazy" title="GridPad percent live example"></iframe>
+    </div>
+
+    <h3>Example — colorselect mode</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const seq = new GridPad({
+  x: 20, y: 22,
+  rows: 4, cols: 4,
+  mode: 'colorselect',
+  cellSize: 20,
+  hGroup: 2, vGroup: 2,
+  label: 'COLOR',
+  options: [
+    { color: '#222222', value: 'off'   },
+    { color: '#cc3300', value: 'red'   },
+    { color: '#0055cc', value: 'blue'  },
+    { color: '#22aa44', value: 'green' },
+  ],
+  onChange: v => console.log(v),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=gridpad_colorselect" width="160" height="155" scrolling="no" frameborder="0" loading="lazy" title="GridPad colorselect live example"></iframe>
     </div>
   </section>
 
