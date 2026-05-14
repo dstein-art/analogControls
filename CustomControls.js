@@ -2357,21 +2357,31 @@ window.RangeSlider = RangeSlider;
 class Panel extends AnalogControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
-    this.width     = opts.width  ?? 300;
-    this.height    = opts.height ?? 200;
-    this._visible  = opts.visible !== false;
-    this._children = [];
-    this._scrollX  = 0;
-    this._scrollY  = 0;
-    this._sbW      = 8;         // scrollbar thickness px
-    this._dragSB   = null;      // 'v' | 'h' | null
+    this.width      = opts.width  ?? 300;
+    this.height     = opts.height ?? 200;
+    this._visible   = opts.visible !== false;
+    this._minimized = opts.minimized ?? false;
+    this._children  = [];
+    this._scrollX   = 0;
+    this._scrollY   = 0;
+    this._sbW       = 8;    // scrollbar thickness px
+    this._btnSz     = 10;   // minimize toggle button size px
+    this._dragSB    = null; // 'v' | 'h' | null
     this._dragSBRef = null;
   }
 
-  get visible()  { return this._visible; }
-  set visible(v) {
+  get visible()    { return this._visible; }
+  set visible(v)   {
     this._visible = !!v;
     if (!this._visible) {
+      for (const c of this._children) { c._hovered = false; c._active = false; }
+    }
+  }
+
+  get minimized()  { return this._minimized; }
+  set minimized(v) {
+    this._minimized = !!v;
+    if (this._minimized) {
       for (const c of this._children) { c._hovered = false; c._active = false; }
     }
   }
@@ -2380,6 +2390,24 @@ class Panel extends AnalogControl {
   set scrollX(v) { this._scrollX = constrain(v, 0, this._maxScrollX()); }
   get scrollY()  { return this._scrollY; }
   set scrollY(v) { this._scrollY = constrain(v, 0, this._maxScrollY()); }
+
+  // Title bar is present only when label is set.
+  get _titleH() { return this.label ? 20 : 0; }
+
+  // Bounding box of the minimize/maximize toggle button (right side of title bar).
+  _btnRect() {
+    const titleH = this._titleH;
+    if (!titleH) return null;
+    const bx = this.x + this.width - this._btnSz - 5;
+    const by = this.y + (titleH - this._btnSz) / 2;
+    return { bx, by, bsz: this._btnSz };
+  }
+
+  _hitBtn(mx, my) {
+    const r = this._btnRect();
+    if (!r) return false;
+    return mx >= r.bx && mx <= r.bx + r.bsz && my >= r.by && my <= r.by + r.bsz;
+  }
 
   // Remove control from the global registry and adopt it into this panel.
   add(control) {
@@ -2405,27 +2433,32 @@ class Panel extends AnalogControl {
     return m;
   }
 
-  _needsV() { return this._contentH() > this.height; }
-  _needsH() { return this._contentW() > this.width;  }
-  _viewW()  { return this.width  - (this._needsV() ? this._sbW : 0); }
-  _viewH()  { return this.height - (this._needsH() ? this._sbW : 0); }
+  _bodyH()  { return this.height - this._titleH; }
+  _needsV() { return this._contentH() > this._bodyH(); }
+  _needsH() { return this._contentW() > this.width;    }
+  _viewW()  { return this.width    - (this._needsV() ? this._sbW : 0); }
+  _viewH()  { return this._bodyH() - (this._needsH() ? this._sbW : 0); }
   _maxScrollX() { return Math.max(0, this._contentW() - this._viewW()); }
   _maxScrollY() { return Math.max(0, this._contentH() - this._viewH()); }
 
+  // Drawn height changes when minimized — only the title bar is shown.
+  _drawnH() { return (this._minimized && this._titleH) ? this._titleH : this.height; }
+
   _inBounds(mx, my) {
     return mx >= this.x && mx <= this.x + this.width &&
-           my >= this.y && my <= this.y + this.height;
+           my >= this.y && my <= this.y + this._drawnH();
   }
   _inViewport(mx, my) {
+    if (this._minimized) return false;
     return mx >= this.x && mx <= this.x + this._viewW() &&
-           my >= this.y && my <= this.y + this._viewH();
+           my >= this.y + this._titleH && my <= this.y + this._titleH + this._viewH();
   }
 
-  // Temporarily remap mouseX/mouseY to panel-local coords while calling fn.
+  // Temporarily remap mouseX/mouseY to panel-local content coords while calling fn.
   _withOffsetMouse(fn) {
     const ox = window.mouseX, oy = window.mouseY;
     window.mouseX = ox - this.x + this._scrollX;
-    window.mouseY = oy - this.y + this._scrollY;
+    window.mouseY = oy - (this.y + this._titleH) + this._scrollY;
     try { fn(); } finally { window.mouseX = ox; window.mouseY = oy; }
   }
 
@@ -2433,7 +2466,6 @@ class Panel extends AnalogControl {
   mouseMoved() {
     if (!this._visible) return;
 
-    // Scrollbar dragging uses raw canvas coords
     if (this._dragSB === 'v' && this._dragSBRef) {
       const dy    = mouseY - this._dragSBRef.my;
       const vh    = this._viewH();
@@ -2456,7 +2488,6 @@ class Panel extends AnalogControl {
     if (this._inViewport(mouseX, mouseY)) {
       this._withOffsetMouse(() => { for (const c of this._children) c.mouseMoved(); });
     } else {
-      // Mouse is outside — clear hover/active on all children
       const ox = window.mouseX, oy = window.mouseY;
       window.mouseX = -99999; window.mouseY = -99999;
       for (const c of this._children) c.mouseMoved();
@@ -2467,13 +2498,24 @@ class Panel extends AnalogControl {
   mousePressed() {
     if (!this._visible || !this._inBounds(mouseX, mouseY)) return;
 
+    // Minimize/maximize toggle button
+    if (this._hitBtn(mouseX, mouseY)) {
+      this.minimized = !this._minimized;
+      return;
+    }
+
+    // Rest of title bar — no children there
+    if (mouseY < this.y + this._titleH) return;
+
+    if (this._minimized) return;
+
     if (this._needsV() && mouseX >= this.x + this._viewW()) {
-      this._dragSB  = 'v';
+      this._dragSB    = 'v';
       this._dragSBRef = { my: mouseY, scrollY: this._scrollY };
       return;
     }
-    if (this._needsH() && mouseY >= this.y + this._viewH()) {
-      this._dragSB  = 'h';
+    if (this._needsH() && mouseY >= this.y + this._titleH + this._viewH()) {
+      this._dragSB    = 'h';
       this._dragSBRef = { mx: mouseX, scrollX: this._scrollX };
       return;
     }
@@ -2486,13 +2528,14 @@ class Panel extends AnalogControl {
     if (!this._visible) return;
     this._dragSB    = null;
     this._dragSBRef = null;
-    this._withOffsetMouse(() => { for (const c of this._children) c.mouseReleased(); });
+    if (!this._minimized) {
+      this._withOffsetMouse(() => { for (const c of this._children) c.mouseReleased(); });
+    }
   }
 
   mouseWheel(e) {
-    if (!this._visible || !this._inBounds(mouseX, mouseY)) return;
+    if (!this._visible || this._minimized || !this._inBounds(mouseX, mouseY)) return;
 
-    // If a child control is hovered, let it consume the scroll
     if (this._children.some(c => c._hovered)) {
       this._withOffsetMouse(() => { for (const c of this._children) c.mouseWheel(e); });
       return false;
@@ -2513,56 +2556,134 @@ class Panel extends AnalogControl {
   draw() {
     if (!this._visible) return;
 
-    const gc     = drawingContext;
-    const { x, y, width, height, theme } = this;
-    const needsV = this._needsV();
-    const needsH = this._needsH();
-    const viewW  = this._viewW();
-    const viewH  = this._viewH();
+    const gc       = drawingContext;
+    const { x, y, width, theme } = this;
+    const titleH   = this._titleH;
+    const drawnH   = this._drawnH();
+    const contentY = y + titleH;
 
-    // Panel border + background
+    // Outer border — shrinks to just titleH when minimized
     push();
     fill(theme.panel);
     stroke(theme.panelStroke);
     strokeWeight(1);
-    rect(x, y, width, height, 4);
+    rect(x, y, width, drawnH, 4);
     pop();
 
-    // Clip viewport, translate to panel-local coordinate space, draw children
+    // Title bar (only when label is set)
+    if (titleH > 0) {
+      gc.save();
+      gc.beginPath();
+      if (this._minimized) {
+        // Full rounded rect when minimized (no content below)
+        gc.roundRect
+          ? gc.roundRect(x + 1, y + 1, width - 2, titleH - 2, 3)
+          : gc.rect(x + 1, y + 1, width - 2, titleH - 2);
+      } else {
+        // Clip top-rounded only so bar blends into content area below
+        gc.roundRect
+          ? gc.roundRect(x + 1, y + 1, width - 2, titleH - 1, [3, 3, 0, 0])
+          : gc.rect(x + 1, y + 1, width - 2, titleH - 1);
+      }
+      gc.clip();
+
+      push();
+      noStroke();
+      fill(lerpColor(color(theme.panel), color(theme.panelStroke), 0.45));
+      rect(x, y, width, titleH);
+      pop();
+
+      gc.restore();
+
+      push();
+      // Separator line (only when expanded)
+      if (!this._minimized) {
+        stroke(theme.panelStroke);
+        strokeWeight(1);
+        line(x, y + titleH, x + width, y + titleH);
+      }
+      // Label text centred in title bar (button is small enough not to interfere)
+      noStroke();
+      fill(theme.label);
+      textSize(10);
+      textAlign(CENTER, CENTER);
+      if (theme.font) textFont(theme.font);
+      text(this.label, x + width / 2, y + titleH / 2);
+      pop();
+
+      // Minimize/maximize button
+      this._drawToggleBtn();
+    }
+
+    if (this._minimized) return;
+
+    // Clip content viewport and draw children
+    const needsV  = this._needsV();
+    const needsH  = this._needsH();
+    const viewW   = this._viewW();
+    const viewH   = this._viewH();
+
     gc.save();
     gc.beginPath();
-    gc.rect(x + 1, y + 1, viewW - 2, viewH - 2);
+    gc.rect(x + 1, contentY + 1, viewW - 2, viewH - 2);
     gc.clip();
 
     gc.save();
-    gc.translate(x - this._scrollX, y - this._scrollY);
+    gc.translate(x - this._scrollX, contentY - this._scrollY);
     for (const c of this._children) c.draw();
     gc.restore();
 
     gc.restore();
 
-    if (needsV) this._drawVScrollBar(viewW, viewH);
-    if (needsH) this._drawHScrollBar(viewW, viewH);
-    if (this.label) this._drawLabel(x + width / 2, y + height + 3);
+    if (needsV) this._drawVScrollBar(viewW, viewH, contentY);
+    if (needsH) this._drawHScrollBar(viewW, viewH, contentY);
   }
 
-  _drawVScrollBar(viewW, viewH) {
-    const { x, y, theme } = this;
+  _drawToggleBtn() {
+    const r = this._btnRect();
+    if (!r) return;
+    const { bx, by, bsz } = r;
+    const hovered = mouseX >= bx && mouseX <= bx + bsz &&
+                    mouseY >= by && mouseY <= by + bsz;
+    const { theme } = this;
+
+    push();
+    // Button background
+    noStroke();
+    fill(hovered
+      ? lerpColor(color(theme.capBody), color(theme.capHighlight), 0.5)
+      : lerpColor(color(theme.panel), color(theme.panelStroke), 0.6));
+    rect(bx, by, bsz, bsz, 2);
+
+    // Icon: "–" when expanded, "+" when minimized
+    stroke(theme.label);
+    strokeWeight(1.5);
+    noFill();
+    const cx = bx + bsz / 2;
+    const cy = by + bsz / 2;
+    const arm = bsz * 0.28;
+    line(cx - arm, cy, cx + arm, cy);           // horizontal bar (both states)
+    if (this._minimized) line(cx, cy - arm, cx, cy + arm); // vertical bar (+ when minimized)
+    pop();
+  }
+
+  _drawVScrollBar(viewW, viewH, contentY) {
+    const { x, theme } = this;
     const cH   = this._contentH();
     const tH   = Math.max(20, (viewH / cH) * viewH);
     const maxS = this._maxScrollY();
-    const ty   = y + (maxS > 0 ? (this._scrollY / maxS) * (viewH - tH) : 0);
+    const ty   = contentY + (maxS > 0 ? (this._scrollY / maxS) * (viewH - tH) : 0);
     push();
     noStroke();
     fill(lerpColor(color(theme.panel), color(theme.track), 0.4));
-    rect(x + viewW, y, this._sbW, viewH, 2);
+    rect(x + viewW, contentY, this._sbW, viewH, 2);
     fill(lerpColor(color(theme.capBody), color(theme.capHighlight), 0.3));
     rect(x + viewW + 1, ty, this._sbW - 2, tH, 2);
     pop();
   }
 
-  _drawHScrollBar(viewW, viewH) {
-    const { x, y, theme } = this;
+  _drawHScrollBar(viewW, viewH, contentY) {
+    const { x, theme } = this;
     const cW   = this._contentW();
     const tW   = Math.max(20, (viewW / cW) * viewW);
     const maxS = this._maxScrollX();
@@ -2570,9 +2691,9 @@ class Panel extends AnalogControl {
     push();
     noStroke();
     fill(lerpColor(color(theme.panel), color(theme.track), 0.4));
-    rect(x, y + viewH, viewW, this._sbW, 2);
+    rect(x, contentY + viewH, viewW, this._sbW, 2);
     fill(lerpColor(color(theme.capBody), color(theme.capHighlight), 0.3));
-    rect(tx, y + viewH + 1, tW, this._sbW - 2, 2);
+    rect(tx, contentY + viewH + 1, tW, this._sbW - 2, 2);
     pop();
   }
 }
