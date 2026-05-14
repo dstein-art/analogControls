@@ -29,6 +29,100 @@ function _drawBevelGroup(theme, x, y, w, h) {
   pop();
 }
 
+// Draws a bevelled title bar using the theme's cap colors — shared by Panel,
+// MessageDialog, and any future control with a title bar.
+// Handles clipping, gradient fill, bevel edge lines, separator, and label text.
+// The caller is responsible for any additional overlays (e.g. toggle button).
+function _drawBevelTitleBar(theme, x, y, w, titleH, minimized, labelText) {
+  const gc = drawingContext;
+
+  // Clip to title bar shape
+  gc.save();
+  gc.beginPath();
+  if (minimized) {
+    gc.roundRect
+      ? gc.roundRect(x + 1, y + 1, w - 2, titleH - 2, 3)
+      : gc.rect(x + 1, y + 1, w - 2, titleH - 2);
+  } else {
+    gc.roundRect
+      ? gc.roundRect(x + 1, y + 1, w - 2, titleH - 1, [3, 3, 0, 0])
+      : gc.rect(x + 1, y + 1, w - 2, titleH - 1);
+  }
+  gc.clip();
+
+  // Base fill — accent color, matching a selected Switch option
+  gc.fillStyle = theme.capIndicator;
+  gc.fillRect(x, y, w, titleH);
+
+  // Bevel gradient overlay: light at top, subtle shadow at bottom
+  const grad = gc.createLinearGradient(x, y, x, y + titleH);
+  grad.addColorStop(0,   'rgba(255,255,255,0.28)');
+  grad.addColorStop(0.4, 'rgba(255,255,255,0.07)');
+  grad.addColorStop(1,   'rgba(0,0,0,0.18)');
+  gc.fillStyle = grad;
+  gc.fillRect(x, y, w, titleH);
+
+  // Top specular highlight
+  gc.strokeStyle = 'rgba(255,255,255,0.40)';
+  gc.lineWidth   = 1;
+  gc.beginPath();
+  gc.moveTo(x + 2, y + 1.5);
+  gc.lineTo(x + w - 2, y + 1.5);
+  gc.stroke();
+
+  // Bottom shadow line
+  gc.strokeStyle = 'rgba(0,0,0,0.22)';
+  gc.beginPath();
+  gc.moveTo(x + 2, y + titleH - 1.5);
+  gc.lineTo(x + w - 2, y + titleH - 1.5);
+  gc.stroke();
+
+  gc.restore();
+
+  // Separator below bar (only when expanded)
+  if (!minimized) {
+    push();
+    stroke(theme.panelStroke);
+    strokeWeight(1);
+    line(x, y + titleH, x + w, y + titleH);
+    pop();
+  }
+
+  // Label text
+  if (labelText) {
+    push();
+    noStroke();
+    fill(theme.readoutBg);
+    textSize(10);
+    textAlign(CENTER, CENTER);
+    if (theme.font) textFont(theme.font);
+    text(labelText, x + w / 2, y + titleH / 2);
+    pop();
+  }
+}
+
+// Shared word-wrap for dialog message areas.  Call inside push/pop with the
+// desired textSize already set so textWidth() measures correctly.
+function _dialogWrapText(str, maxW) {
+  if (!str) return [];
+  const lines = [];
+  for (const para of str.split('\n')) {
+    const words = para.split(' ');
+    let line = '';
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word;
+      if (!line || textWidth(test) <= maxW) {
+        line = test;
+      } else {
+        lines.push(line);
+        line = word;
+      }
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
 // ─── VUMeter ─────────────────────────────────────────────────────────────────
 // Extends Slider: draws the full fader, then overlays a segmented LED column.
 // The LED column reflects `this.value` directly; drive it from audio analysis.
@@ -2011,6 +2105,223 @@ class TagSelector extends AnalogControl {
 
 window.TagSelector = TagSelector;
 
+// ─── SliderSelector ──────────────────────────────────────────────────────────
+// A vertical fader that snaps to discrete string options.
+// opts: x, y, options[], state (index), width, height, label,
+//       onChange(index, value), onRelease(index, value), theme
+
+class SliderSelector extends AnalogControl {
+  constructor(opts = {}) {
+    super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
+    this.options  = opts.options ?? [];
+    this.state    = constrain(opts.state ?? 0, 0, Math.max(0, this.options.length - 1));
+    this.style    = opts.style ?? 'knob';  // 'knob' | 'button'
+
+    this._capH     = this.style === 'button' ? 20 : 24;
+    this._trackPad = this._capH / 2 + (this.label ? 10 : 2);  // extra top room for label
+    this._trackCX  = 18;                   // x-offset of track center within panel
+
+    const n           = this.options.length;
+    const tickSpacing = 22;
+    const trackLen    = Math.max(0, n - 1) * tickSpacing;
+
+    const charPx   = 5.5;
+    const maxChars = n > 0 ? Math.max(...this.options.map(s => s.length)) : 4;
+    const labelW   = Math.ceil(maxChars * charPx) + 4;
+    const tickEnd  = this._trackCX + 3 + 2 + 5 + 2;  // = 30
+
+    this.height = opts.height ?? Math.max(80, trackLen + this._trackPad * 2);
+    this.width  = opts.width  ?? Math.max(50, tickEnd + labelW + 4);
+  }
+
+  get value() { return this.options ? (this.options[this.state] ?? null) : null; }
+  set value(v) {
+    if (!this.options) return;
+    const i = this.options.indexOf(v);
+    if (i !== -1) this.state = i;
+  }
+
+  _trackTop()    { return this.y + this._trackPad; }
+  _trackBottom() { return this.y + this.height - this._trackPad; }
+  _trackLen()    { return this._trackBottom() - this._trackTop(); }
+
+  _tickY(i) {
+    const n = this.options.length;
+    if (n <= 1) return (this._trackTop() + this._trackBottom()) / 2;
+    return this._trackTop() + (i / (n - 1)) * this._trackLen();
+  }
+
+  _capY() { return this._tickY(this.state); }
+
+  _nearestTick(py) {
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < this.options.length; i++) {
+      const d = Math.abs(py - this._tickY(i));
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+  }
+
+  _containsPoint(mx, my) {
+    return mx >= this.x && mx <= this.x + this.width &&
+           my >= this.y && my <= this.y + this.height;
+  }
+
+  _capHit(mx, my) {
+    const cy = this._capY();
+    const cx = this.x + this._trackCX;
+    if (this.style === 'button') {
+      return dist(mx, my, cx, cy) <= this._capH / 2;
+    }
+    const capW = this._trackCX * 2 - 8;
+    return abs(my - cy) <= this._capH / 2 &&
+           mx >= cx - capW / 2 && mx <= cx + capW / 2;
+  }
+
+  draw() {
+    this._markDrawn();
+    if (this.options.length === 0) return;
+    const { x, y, width: w, height: h } = this;
+    const cx = x + this._trackCX;
+
+    this._drawPanel(x, y, w, h);
+
+    if (this._hovered && !this.disabled) {
+      push(); noStroke(); fill(this.theme.hoverGlow); rect(x, y, w, h, 4); pop();
+    }
+
+    // Track groove
+    const trackW = 6;
+    push();
+    fill(this.theme.track);
+    stroke(this.theme.trackStroke);
+    strokeWeight(1);
+    rect(cx - trackW / 2, this._trackTop(), trackW, this._trackLen(), 2);
+    pop();
+
+    // Tick marks and option labels
+    const tickX   = cx + trackW / 2 + 2;
+    const tickLen = 5;
+    push();
+    textSize(9);
+    textAlign(LEFT, CENTER);
+    if (this.theme.font) textFont(this.theme.font);
+    for (let i = 0; i < this.options.length; i++) {
+      const ty         = this._tickY(i);
+      const isSelected = i === this.state;
+      strokeWeight(isSelected ? 1.5 : 1);
+      stroke(isSelected ? this.theme.capIndicator : this.theme.scaleTick);
+      line(tickX, ty, tickX + tickLen, ty);
+      noStroke();
+      fill(isSelected ? this.theme.capIndicator : this.theme.scaleText);
+      text(this.options[i], tickX + tickLen + 2, ty);
+    }
+    pop();
+
+    // Slider cap
+    if (this.style === 'button') {
+      this._drawSSButtonCap(cx, this._capY());
+    } else {
+      this._drawSSCap(cx, this._capY());
+    }
+
+    this._drawLabel(x + this.width / 2, y + 2);
+
+    if (this._active) {
+      this._drawTooltip(cx, this._capY(), this.options[this.state] ?? '');
+    }
+    if (this.disabled) this._drawDisabled(x, y, w, h);
+  }
+
+  _drawSSCap(cx, cy) {
+    const capW = this._trackCX * 2 - 8;
+    const capH = this._capH;
+    const capX = cx - capW / 2;
+    const capY = cy - capH / 2;
+
+    push();
+    noStroke();
+    for (let i = 0; i < capH; i++) {
+      const t   = i / capH;
+      const col = lerpColor(color(this.theme.capHighlight), color(this.theme.capShadow), t);
+      fill(col);
+      rect(capX, capY + i, capW, 1);
+    }
+    stroke(this.theme.panelStroke);
+    strokeWeight(1);
+    noFill();
+    rect(capX, capY, capW, capH, 3);
+    stroke(this.theme.capIndicator);
+    strokeWeight(1.5);
+    line(capX + 4, cy, capX + capW - 4, cy);
+    pop();
+  }
+
+  _drawSSButtonCap(cx, cy) {
+    const r  = this._capH / 2;
+    const gc = drawingContext;
+    gc.save();
+    const grad = gc.createRadialGradient(
+      cx - r * 0.3, cy - r * 0.35, 0,
+      cx, cy, r
+    );
+    grad.addColorStop(0,    this.theme.capHighlight);
+    grad.addColorStop(0.55, this.theme.capBody);
+    grad.addColorStop(1,    this.theme.capShadow);
+    gc.beginPath();
+    gc.arc(cx, cy, r, 0, Math.PI * 2);
+    gc.fillStyle = grad;
+    gc.fill();
+    gc.strokeStyle = this.theme.panelStroke;
+    gc.lineWidth   = 1;
+    gc.stroke();
+    gc.beginPath();
+    gc.arc(cx, cy, 2.5, 0, Math.PI * 2);
+    gc.fillStyle = this.theme.capIndicator;
+    gc.fill();
+    gc.restore();
+  }
+
+  mousePressed() {
+    if (this.disabled) return;
+    if (this._capHit(mouseX, mouseY)) {
+      this._active = true;
+    }
+  }
+
+  mouseReleased() {
+    if (this._active) {
+      this._active = false;
+      if (this.onRelease) this.onRelease(this.state, this.options[this.state]);
+    }
+  }
+
+  mouseMoved() {
+    if (this.disabled) return;
+    this._hovered = this._containsPoint(mouseX, mouseY);
+    if (this._active) {
+      const nearest = this._nearestTick(mouseY);
+      if (nearest !== this.state) {
+        this.state = nearest;
+        if (this.onChange) this.onChange(this.state, this.options[this.state]);
+      }
+    }
+  }
+
+  mouseWheel(e) {
+    if (this.disabled || !this._hovered) return;
+    const delta = e.deltaY ?? e.delta ?? 0;
+    const dir   = delta > 0 ? 1 : -1;
+    const next  = constrain(this.state + dir, 0, this.options.length - 1);
+    if (next !== this.state) {
+      this.state = next;
+      if (this.onChange) this.onChange(this.state, this.options[this.state]);
+    }
+  }
+}
+
+window.SliderSelector = SliderSelector;
+
 // ─── RangeSlider ─────────────────────────────────────────────────────────────
 // A two-handle slider that defines a low/high range.
 // opts: x, y, width, height, min, max, valueLow, valueHigh, label,
@@ -2359,8 +2670,10 @@ class Panel extends AnalogControl {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
     this.width      = opts.width  ?? 300;
     this.height     = opts.height ?? 200;
-    this._visible   = opts.visible !== false;
-    this._minimized = opts.minimized ?? false;
+    this._visible    = opts.visible    !== false;
+    this._minimized  = opts.minimized  ?? false;
+    this.minimizable = opts.minimizable !== false;
+    this.movable     = opts.movable     !== false;
     this._children  = [];
     this._scrollX   = 0;
     this._scrollY   = 0;
@@ -2508,13 +2821,13 @@ class Panel extends AnalogControl {
     if (!this._visible || !this._inBounds(mouseX, mouseY)) return;
 
     // Minimize/maximize toggle button
-    if (this._hitBtn(mouseX, mouseY)) {
+    if (this.minimizable && this._hitBtn(mouseX, mouseY)) {
       this.minimized = !this._minimized;
       return;
     }
 
     // Title bar drag — grab anywhere else on the bar to move the panel
-    if (this._titleH > 0 && mouseY < this.y + this._titleH) {
+    if (this.movable && this._titleH > 0 && mouseY < this.y + this._titleH) {
       this._draggingPanel = true;
       this._dragPanelOff  = { dx: mouseX - this.x, dy: mouseY - this.y };
       return;
@@ -2587,47 +2900,8 @@ class Panel extends AnalogControl {
 
     // Title bar (only when label is set)
     if (titleH > 0) {
-      gc.save();
-      gc.beginPath();
-      if (this._minimized) {
-        // Full rounded rect when minimized (no content below)
-        gc.roundRect
-          ? gc.roundRect(x + 1, y + 1, width - 2, titleH - 2, 3)
-          : gc.rect(x + 1, y + 1, width - 2, titleH - 2);
-      } else {
-        // Clip top-rounded only so bar blends into content area below
-        gc.roundRect
-          ? gc.roundRect(x + 1, y + 1, width - 2, titleH - 1, [3, 3, 0, 0])
-          : gc.rect(x + 1, y + 1, width - 2, titleH - 1);
-      }
-      gc.clip();
-
-      push();
-      noStroke();
-      fill(lerpColor(color(theme.panel), color(theme.panelStroke), 0.45));
-      rect(x, y, width, titleH);
-      pop();
-
-      gc.restore();
-
-      push();
-      // Separator line (only when expanded)
-      if (!this._minimized) {
-        stroke(theme.panelStroke);
-        strokeWeight(1);
-        line(x, y + titleH, x + width, y + titleH);
-      }
-      // Label text centred in title bar (button is small enough not to interfere)
-      noStroke();
-      fill(theme.label);
-      textSize(10);
-      textAlign(CENTER, CENTER);
-      if (theme.font) textFont(theme.font);
-      text(this.label, x + width / 2, y + titleH / 2);
-      pop();
-
-      // Minimize/maximize button
-      this._drawToggleBtn();
+      _drawBevelTitleBar(theme, x, y, width, titleH, this._minimized, this.label);
+      if (this.minimizable) this._drawToggleBtn();
     }
 
     if (this._minimized) return;
@@ -2714,3 +2988,1002 @@ class Panel extends AnalogControl {
 }
 
 window.Panel = Panel;
+
+// ─── MessageDialog ───────────────────────────────────────────────────────────
+// A movable dialog that displays a formatted message and optional action buttons.
+// opts: x, y, message, buttons[], label, width, movable,
+//       onButton(index, label), theme
+
+class MessageDialog extends AnalogControl {
+  constructor(opts = {}) {
+    super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
+    this.message  = opts.message  ?? '';
+    this.buttons  = opts.buttons  ?? [];
+    this.movable  = opts.movable  !== false;
+    this.onButton = opts.onButton ?? null;
+
+    this._padX      = 14;
+    this._padY      = 10;
+    this._lineH     = 15;
+    this._textSz    = 11;
+    this._btnH      = 22;
+    this._btnPadX   = 12;
+    this._btnGap    = 6;
+    this._btnRowH   = this.buttons.length > 0 ? this._btnH + this._padY + 8 : 0;
+
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
+    this._hoveredBtn    = -1;
+    this._wrappedLines  = [];
+    this._layoutDirty   = true;
+
+    // Estimate button row width at construction; height resolved on first draw
+    const charPx    = 6.5;
+    const btnWidths = this.buttons.map(b => Math.ceil(b.length * charPx) + this._btnPadX * 2);
+    const btnRowW   = btnWidths.length > 0
+      ? btnWidths.reduce((a, b) => a + b, 0) + (btnWidths.length - 1) * this._btnGap + this._padX * 2
+      : 0;
+    this.width  = opts.width ?? Math.max(220, btnRowW);
+    this.height = opts.height ?? 100;  // updated on first draw
+  }
+
+  get _titleH() { return this.label ? 20 : 0; }
+
+  _buildLayout() {
+    this._layoutDirty = false;
+    const contentW = this.width - this._padX * 2;
+    push();
+    textSize(this._textSz);
+    if (this.theme.font) textFont(this.theme.font);
+    this._wrappedLines = _dialogWrapText(this.message, contentW);
+    pop();
+    const textH = this._wrappedLines.length * this._lineH;
+    this.height = this._titleH + this._padY + textH + this._padY + this._btnRowH;
+  }
+
+  _btnRects() {
+    if (!this.buttons.length) return [];
+    push();
+    textSize(10);
+    if (this.theme.font) textFont(this.theme.font);
+    const widths = this.buttons.map(b => textWidth(b) + this._btnPadX * 2);
+    pop();
+    const totalW = widths.reduce((a, b) => a + b, 0) + (widths.length - 1) * this._btnGap;
+    const rowY   = this.y + this.height - this._btnRowH + 8;
+    let bx       = this.x + (this.width - totalW) / 2;
+    return widths.map((w, i) => {
+      const r = { x: bx, y: rowY, w, h: this._btnH, label: this.buttons[i] };
+      bx += w + this._btnGap;
+      return r;
+    });
+  }
+
+  _inBounds(mx, my) {
+    return mx >= this.x && mx <= this.x + this.width &&
+           my >= this.y && my <= this.y + this.height;
+  }
+
+  _hitBtnIndex(mx, my) {
+    const rects = this._btnRects();
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) return i;
+    }
+    return -1;
+  }
+
+  draw() {
+    this._markDrawn();
+    if (this._layoutDirty) this._buildLayout();
+
+    const gc              = drawingContext;
+    const { x, y, width: w, height: h, theme } = this;
+    const titleH          = this._titleH;
+
+    // Outer panel
+    push();
+    fill(theme.panel);
+    stroke(theme.panelStroke);
+    strokeWeight(1);
+    rect(x, y, w, h, 4);
+    pop();
+
+    // Title bar
+    if (titleH > 0) {
+      _drawBevelTitleBar(theme, x, y, w, titleH, false, this.label);
+    }
+
+    // Message text
+    push();
+    noStroke();
+    fill(theme.label);
+    textSize(this._textSz);
+    textAlign(LEFT, TOP);
+    if (theme.font) textFont(theme.font);
+    const textStartY = y + titleH + this._padY;
+    for (let i = 0; i < this._wrappedLines.length; i++) {
+      text(this._wrappedLines[i], x + this._padX, textStartY + i * this._lineH);
+    }
+    pop();
+
+    // Button row separator line
+    if (this.buttons.length > 0) {
+      push();
+      stroke(theme.panelStroke);
+      strokeWeight(1);
+      line(x, y + h - this._btnRowH, x + w, y + h - this._btnRowH);
+      pop();
+    }
+
+    // Buttons
+    if (this.buttons.length > 0) {
+      const rects = this._btnRects();
+      push();
+      textSize(10);
+      textAlign(CENTER, CENTER);
+      if (theme.font) textFont(theme.font);
+      for (let i = 0; i < rects.length; i++) {
+        const r   = rects[i];
+        const hov = i === this._hoveredBtn;
+        fill(hov
+          ? lerpColor(color(theme.capBody), color(theme.capHighlight), 0.4)
+          : lerpColor(color(theme.panel), color(theme.panelStroke), 0.25));
+        stroke(theme.panelStroke);
+        strokeWeight(1);
+        rect(r.x, r.y, r.w, r.h, 3);
+        noStroke();
+        fill(hov ? theme.capHighlight : theme.label);
+        text(r.label, r.x + r.w / 2, r.y + r.h / 2);
+      }
+      pop();
+    }
+
+    if (this.disabled) this._drawDisabled(x, y, w, h);
+  }
+
+  mousePressed() {
+    if (!this._inBounds(mouseX, mouseY)) return;
+
+    // Title bar drag start
+    if (this.movable && this._titleH > 0 && mouseY < this.y + this._titleH) {
+      this._draggingPanel = true;
+      this._dragPanelOff  = { dx: mouseX - this.x, dy: mouseY - this.y };
+      return;
+    }
+
+    // Button click
+    const bi = this._hitBtnIndex(mouseX, mouseY);
+    if (bi !== -1 && this.onButton) this.onButton(bi, this.buttons[bi]);
+  }
+
+  mouseReleased() {
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
+  }
+
+  mouseMoved() {
+    if (this._draggingPanel && this._dragPanelOff) {
+      this.x = mouseX - this._dragPanelOff.dx;
+      this.y = mouseY - this._dragPanelOff.dy;
+      return;
+    }
+    this._hoveredBtn = this._inBounds(mouseX, mouseY)
+      ? this._hitBtnIndex(mouseX, mouseY)
+      : -1;
+  }
+}
+
+window.MessageDialog = MessageDialog;
+
+// ─── InputDialog ─────────────────────────────────────────────────────────────
+// Like MessageDialog but adds a single-line text input between the message and
+// the buttons.  Keyboard events are captured via a document listener while the
+// field is focused; the listener is removed on blur or remove().
+// opts: x, y, message, buttons[], label, inputValue, inputPlaceholder, width,
+//       movable, onButton(index, label), onSubmit(value), theme
+
+class InputDialog extends AnalogControl {
+  constructor(opts = {}) {
+    super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
+    this.message          = opts.message          ?? '';
+    this.buttons          = opts.buttons          ?? [];
+    this.movable          = opts.movable          !== false;
+    this.onButton         = opts.onButton         ?? null;
+    this.inputValue       = opts.inputValue       ?? '';
+    this.inputPlaceholder = opts.inputPlaceholder ?? '';
+    this.onSubmit         = opts.onSubmit         ?? null;
+
+    this._padX        = 14;
+    this._padY        = 10;
+    this._lineH       = 15;
+    this._textSz      = 11;
+    this._inputH      = 26;
+    this._btnH        = 22;
+    this._btnPadX     = 12;
+    this._btnGap      = 6;
+    this._btnRowH     = this.buttons.length > 0 ? this._btnH + this._padY + 8 : 0;
+
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
+    this._hoveredBtn    = -1;
+    this._inputFocused  = false;
+    this._cursorPos     = this.inputValue.length;
+    this._cursorMs      = 0;
+    this._textScrollX   = 0;
+    this._wrappedLines  = [];
+    this._layoutDirty   = true;
+
+    const charPx    = 6.5;
+    const btnWidths = this.buttons.map(b => Math.ceil(b.length * charPx) + this._btnPadX * 2);
+    const btnRowW   = btnWidths.length > 0
+      ? btnWidths.reduce((a, b) => a + b, 0) + (btnWidths.length - 1) * this._btnGap + this._padX * 2
+      : 0;
+    this.width  = opts.width ?? Math.max(220, btnRowW);
+    this.height = opts.height ?? 100;
+
+    this._keyHandler = (e) => this._handleKey(e);
+  }
+
+  get _titleH() { return this.label ? 20 : 0; }
+
+  _buildLayout() {
+    this._layoutDirty = false;
+    push();
+    textSize(this._textSz);
+    if (this.theme.font) textFont(this.theme.font);
+    this._wrappedLines = _dialogWrapText(this.message, this.width - this._padX * 2);
+    pop();
+    const textH  = this._wrappedLines.length * this._lineH;
+    const msgGap = textH > 0 ? this._padY : 0;
+    this.height  = this._titleH + this._padY + textH + msgGap
+                 + this._inputH + this._padY + this._btnRowH;
+  }
+
+  _inputRect() {
+    const textH  = this._wrappedLines.length * this._lineH;
+    const msgGap = textH > 0 ? this._padY : 0;
+    const iy     = this.y + this._titleH + this._padY + textH + msgGap;
+    return { x: this.x + this._padX, y: iy, w: this.width - this._padX * 2, h: this._inputH };
+  }
+
+  _btnRects() {
+    if (!this.buttons.length) return [];
+    push();
+    textSize(10);
+    if (this.theme.font) textFont(this.theme.font);
+    const widths = this.buttons.map(b => textWidth(b) + this._btnPadX * 2);
+    pop();
+    const totalW = widths.reduce((a, b) => a + b, 0) + (widths.length - 1) * this._btnGap;
+    const rowY   = this.y + this.height - this._btnRowH + 8;
+    let bx       = this.x + (this.width - totalW) / 2;
+    return widths.map((w, i) => {
+      const r = { x: bx, y: rowY, w, h: this._btnH, label: this.buttons[i] };
+      bx += w + this._btnGap;
+      return r;
+    });
+  }
+
+  _inBounds(mx, my) {
+    return mx >= this.x && mx <= this.x + this.width &&
+           my >= this.y && my <= this.y + this.height;
+  }
+
+  _hitBtnIndex(mx, my) {
+    const rects = this._btnRects();
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) return i;
+    }
+    return -1;
+  }
+
+  _handleKey(e) {
+    if (!this._inputFocused) return;
+    const v   = this.inputValue;
+    const pos = this._cursorPos;
+
+    if (e.key === 'Enter') {
+      if (this.onSubmit) this.onSubmit(this.inputValue);
+    } else if (e.key === 'Backspace') {
+      if (pos > 0) { this.inputValue = v.slice(0, pos - 1) + v.slice(pos); this._cursorPos = pos - 1; }
+    } else if (e.key === 'Delete') {
+      if (pos < v.length) this.inputValue = v.slice(0, pos) + v.slice(pos + 1);
+    } else if (e.key === 'ArrowLeft')  { this._cursorPos = Math.max(0, pos - 1); }
+    else if (e.key === 'ArrowRight')   { this._cursorPos = Math.min(v.length, pos + 1); }
+    else if (e.key === 'Home')         { this._cursorPos = 0; }
+    else if (e.key === 'End')          { this._cursorPos = v.length; }
+    else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      this.inputValue = v.slice(0, pos) + e.key + v.slice(pos);
+      this._cursorPos = pos + 1;
+    } else { return; }
+
+    this._cursorMs = millis();
+    e.preventDefault();
+  }
+
+  _focus() {
+    if (this._inputFocused) return;
+    this._inputFocused = true;
+    this._cursorMs     = millis();
+    document.addEventListener('keydown', this._keyHandler);
+  }
+
+  _blur() {
+    if (!this._inputFocused) return;
+    this._inputFocused = false;
+    document.removeEventListener('keydown', this._keyHandler);
+  }
+
+  remove() {
+    super.remove();
+    this._blur();
+  }
+
+  draw() {
+    this._markDrawn();
+    if (this._layoutDirty) this._buildLayout();
+
+    const gc = drawingContext;
+    const { x, y, width: w, height: h, theme } = this;
+    const titleH = this._titleH;
+
+    // Outer panel
+    push();
+    fill(theme.panel);
+    stroke(theme.panelStroke);
+    strokeWeight(1);
+    rect(x, y, w, h, 4);
+    pop();
+
+    // Title bar
+    if (titleH > 0) _drawBevelTitleBar(theme, x, y, w, titleH, false, this.label);
+
+    // Message text
+    if (this._wrappedLines.length > 0) {
+      push();
+      noStroke();
+      fill(theme.label);
+      textSize(this._textSz);
+      textAlign(LEFT, TOP);
+      if (theme.font) textFont(theme.font);
+      const ty = y + titleH + this._padY;
+      for (let i = 0; i < this._wrappedLines.length; i++) {
+        text(this._wrappedLines[i], x + this._padX, ty + i * this._lineH);
+      }
+      pop();
+    }
+
+    // Input box background
+    const ir      = this._inputRect();
+    const focused = this._inputFocused;
+    push();
+    fill(focused ? lerpColor(color(theme.track), color(theme.panel), 0.4) : theme.track);
+    stroke(focused ? theme.capIndicator : theme.panelStroke);
+    strokeWeight(focused ? 1.5 : 1);
+    rect(ir.x, ir.y, ir.w, ir.h, 3);
+    pop();
+
+    // Text + cursor, clipped to box interior
+    const innerPad = 6;
+    const maxW     = ir.w - innerPad * 2;
+
+    push();
+    textSize(11);
+    if (theme.font) textFont(theme.font);
+    const toCursor = textWidth(this.inputValue.slice(0, this._cursorPos));
+    pop();
+
+    if (toCursor - this._textScrollX > maxW) this._textScrollX = toCursor - maxW;
+    if (toCursor < this._textScrollX)        this._textScrollX = toCursor;
+    this._textScrollX = Math.max(0, this._textScrollX);
+
+    gc.save();
+    gc.beginPath();
+    gc.rect(ir.x + 2, ir.y + 2, ir.w - 4, ir.h - 4);
+    gc.clip();
+
+    push();
+    noStroke();
+    textSize(11);
+    textAlign(LEFT, CENTER);
+    if (theme.font) textFont(theme.font);
+    if (this.inputValue) {
+      fill(theme.readout);
+      text(this.inputValue, ir.x + innerPad - this._textScrollX, ir.y + ir.h / 2);
+    } else if (this.inputPlaceholder && !focused) {
+      fill(theme.scaleText);
+      text(this.inputPlaceholder, ir.x + innerPad, ir.y + ir.h / 2);
+    }
+    if (focused && (millis() - this._cursorMs) % 1000 < 500) {
+      const cx = ir.x + innerPad + toCursor - this._textScrollX;
+      stroke(theme.capIndicator);
+      strokeWeight(1.5);
+      line(cx, ir.y + 5, cx, ir.y + ir.h - 5);
+    }
+    pop();
+
+    gc.restore();
+
+    // Button row separator + buttons
+    if (this.buttons.length > 0) {
+      push();
+      stroke(theme.panelStroke);
+      strokeWeight(1);
+      line(x, y + h - this._btnRowH, x + w, y + h - this._btnRowH);
+      pop();
+
+      const rects = this._btnRects();
+      push();
+      textSize(10);
+      textAlign(CENTER, CENTER);
+      if (theme.font) textFont(theme.font);
+      for (let i = 0; i < rects.length; i++) {
+        const r   = rects[i];
+        const hov = i === this._hoveredBtn;
+        fill(hov
+          ? lerpColor(color(theme.capBody), color(theme.capHighlight), 0.4)
+          : lerpColor(color(theme.panel), color(theme.panelStroke), 0.25));
+        stroke(theme.panelStroke);
+        strokeWeight(1);
+        rect(r.x, r.y, r.w, r.h, 3);
+        noStroke();
+        fill(hov ? theme.capHighlight : theme.label);
+        text(r.label, r.x + r.w / 2, r.y + r.h / 2);
+      }
+      pop();
+    }
+
+    if (this.disabled) this._drawDisabled(x, y, w, h);
+  }
+
+  mousePressed() {
+    if (!this._inBounds(mouseX, mouseY)) { this._blur(); return; }
+
+    // Title bar drag
+    if (this.movable && this._titleH > 0 && mouseY < this.y + this._titleH) {
+      this._blur();
+      this._draggingPanel = true;
+      this._dragPanelOff  = { dx: mouseX - this.x, dy: mouseY - this.y };
+      return;
+    }
+
+    // Input field click — focus and position cursor
+    const ir = this._inputRect();
+    if (mouseX >= ir.x && mouseX <= ir.x + ir.w && mouseY >= ir.y && mouseY <= ir.y + ir.h) {
+      this._focus();
+      push();
+      textSize(11);
+      if (this.theme.font) textFont(this.theme.font);
+      const clickX = mouseX - ir.x - 6 + this._textScrollX;
+      let best = 0, bestDist = Math.abs(clickX);
+      for (let i = 1; i <= this.inputValue.length; i++) {
+        const d = Math.abs(textWidth(this.inputValue.slice(0, i)) - clickX);
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+      this._cursorPos = best;
+      pop();
+      return;
+    }
+
+    this._blur();
+
+    // Button click
+    const bi = this._hitBtnIndex(mouseX, mouseY);
+    if (bi !== -1 && this.onButton) this.onButton(bi, this.buttons[bi]);
+  }
+
+  mouseReleased() {
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
+  }
+
+  mouseMoved() {
+    if (this._draggingPanel && this._dragPanelOff) {
+      this.x = mouseX - this._dragPanelOff.dx;
+      this.y = mouseY - this._dragPanelOff.dy;
+      return;
+    }
+    this._hoveredBtn = this._inBounds(mouseX, mouseY)
+      ? this._hitBtnIndex(mouseX, mouseY)
+      : -1;
+  }
+}
+
+window.InputDialog = InputDialog;
+
+// ─── IconButton ───────────────────────────────────────────────────────────────
+// A square push-button or toggle that renders a Material Symbols icon.
+// Requires in <head>:
+//   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet">
+// opts: x, y, icon (ligature string), size, label (inside button below icon),
+//       toggle, state, iconSize, onClick(state?), disabled, theme
+
+class IconButton extends AnalogControl {
+  constructor(opts = {}) {
+    super(opts);
+    this.icon    = opts.icon    ?? 'star';
+    this.size    = opts.size    ?? 44;
+    this.toggle  = opts.toggle  ?? false;
+    this.state   = opts.state   ?? false;
+    this.onClick = opts.onClick ?? null;
+    this._iconSz = opts.iconSize ?? Math.round(this.size * 0.58);
+    this.width   = this.size;
+    this.height  = this.size;
+  }
+
+  _containsPoint(mx, my) {
+    return mx >= this.x && mx <= this.x + this.size &&
+           my >= this.y && my <= this.y + this.size;
+  }
+
+  draw() {
+    this._markDrawn();
+    const { x, y, theme } = this;
+    const sz   = this.size;
+    const cx   = x + sz / 2;
+    const cy   = y + sz / 2;
+    const on   = this.toggle && this.state;
+    const pr   = this._active;
+    const r    = 5;
+    const pad  = 3;  // inset from panel edge to button face
+    const bx   = x + pad, by = y + pad;
+    const bw   = sz - pad * 2, bh = sz - pad * 2;
+
+    // Panel background
+    this._drawPanel(x, y, sz, sz);
+
+    // ── Button face ──────────────────────────────────────────────────────────
+    const gc = drawingContext;
+    gc.save();
+    gc.beginPath();
+    if (gc.roundRect) gc.roundRect(bx, by, bw, bh, r); else gc.rect(bx, by, bw, bh);
+    gc.clip();
+
+    // Base fill: capIndicator when on, capBody otherwise
+    gc.fillStyle = on ? theme.capIndicator : theme.capBody;
+    gc.fillRect(bx, by, bw, bh);
+
+    // Hover tint
+    if (this._hovered && !pr && !on && !this.disabled) {
+      gc.fillStyle = 'rgba(255,255,255,0.10)';
+      gc.fillRect(bx, by, bw, bh);
+    }
+
+    // Gradient overlay (top-light → bottom-dark when raised; reversed when pressed)
+    const grad = gc.createLinearGradient(bx, by, bx, by + bh);
+    if (pr) {
+      grad.addColorStop(0,   'rgba(0,0,0,0.20)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0.06)');
+      grad.addColorStop(1,   'rgba(255,255,255,0.12)');
+    } else {
+      grad.addColorStop(0,   'rgba(255,255,255,0.30)');
+      grad.addColorStop(0.4, 'rgba(255,255,255,0.08)');
+      grad.addColorStop(1,   'rgba(0,0,0,0.22)');
+    }
+    gc.fillStyle = grad;
+    gc.fillRect(bx, by, bw, bh);
+    gc.restore();
+
+    // ── Bevel edges ──────────────────────────────────────────────────────────
+    gc.save();
+    gc.lineWidth = 1;
+    // Top + left
+    gc.strokeStyle = pr ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)';
+    gc.beginPath();
+    gc.moveTo(bx + 1.5, by + bh - 1.5);
+    gc.lineTo(bx + 1.5, by + 1.5);
+    gc.lineTo(bx + bw - 1.5, by + 1.5);
+    gc.stroke();
+    // Bottom + right
+    gc.strokeStyle = pr ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.40)';
+    gc.beginPath();
+    gc.moveTo(bx + 1.5, by + bh - 1.5);
+    gc.lineTo(bx + bw - 1.5, by + bh - 1.5);
+    gc.lineTo(bx + bw - 1.5, by + 1.5);
+    gc.stroke();
+    // Outer border
+    gc.strokeStyle = theme.panelStroke;
+    gc.beginPath();
+    if (gc.roundRect) gc.roundRect(bx, by, bw, bh, r); else gc.rect(bx, by, bw, bh);
+    gc.stroke();
+    gc.restore();
+
+    // ── Icon + label inside ───────────────────────────────────────────────────
+    const hasLabel = !!(this.label);
+    const labelSz  = 9;
+    const shift    = pr ? 1 : 0;  // press-down shift
+    // Icon vertical centre: raised when label shares space
+    const iconCY = hasLabel ? cy - 5 + shift : cy + shift;
+
+    gc.save();
+    gc.font         = `${this._iconSz}px 'Material Symbols Outlined'`;
+    gc.textAlign    = 'center';
+    gc.textBaseline = 'middle';
+    gc.fillStyle    = on          ? theme.readoutBg
+                    : pr         ? theme.capHighlight
+                    : this._hovered ? theme.label
+                    :                 theme.scaleText;
+    gc.fillText(this.icon, cx, iconCY);
+    gc.restore();
+
+    if (hasLabel) {
+      push();
+      noStroke();
+      fill(on ? theme.readoutBg : pr ? theme.capHighlight : theme.scaleText);
+      textSize(labelSz);
+      textAlign(CENTER, TOP);
+      if (theme.font) textFont(theme.font);
+      text(this.label, cx, iconCY + this._iconSz * 0.50 + shift);
+      pop();
+    }
+
+    if (this.disabled) this._drawDisabled(x, y, sz, sz);
+  }
+
+  mousePressed() {
+    if (this.disabled) return;
+    if (this._containsPoint(mouseX, mouseY)) this._active = true;
+  }
+
+  mouseReleased() {
+    if (!this._active) return;
+    if (this._containsPoint(mouseX, mouseY)) {
+      if (this.toggle) {
+        this.state = !this.state;
+        if (this.onClick) this.onClick(this.state);
+      } else {
+        if (this.onClick) this.onClick();
+      }
+    }
+    this._active = false;
+  }
+
+  mouseMoved() {
+    if (this.disabled) return;
+    this._hovered = this._containsPoint(mouseX, mouseY);
+  }
+}
+
+window.IconButton = IconButton;
+
+// ─── Menu ─────────────────────────────────────────────────────────────────────
+// A horizontal bar (top) or vertical bar (left) menu with optional submenus.
+// items: array where each entry is either a string (leaf) or an array of strings
+//   (submenu) where the first string is the top-level label and the rest are
+//   the submenu items.
+// opts: x, y, orientation ('top'|'bottom'|'left'|'right'), items, width, onChange
+
+class Menu extends AnalogControl {
+  constructor(opts = {}) {
+    super(opts);
+    this.items       = opts.items       ?? [];
+    this.orientation = opts.orientation ?? 'top';
+    this.onChange    = opts.onChange    ?? null;
+
+    this._barH      = 28;   // row height for each item / bar height
+    this._itemPadX  = 12;   // label horizontal inset
+    this._subItemH  = 24;   // submenu row height
+    this._fontSize  = 11;
+
+    this._openIdx     = -1; // index of top-level item whose submenu is open
+    this._hoverIdx    = -1;
+    this._hoverSubIdx = -1;
+
+    this._layoutDirty  = true;
+    this._itemRects    = [];
+    this._subCache     = null;
+    this._subCacheFor  = -1;
+
+    this._explicitW = opts.width  != null ? opts.width  : null;
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  _parsed(i) {
+    const it = this.items[i];
+    return Array.isArray(it)
+      ? { label: it[0], sub: it.slice(1) }
+      : { label: it,    sub: null };
+  }
+
+  _isHoriz() { return this.orientation === 'top' || this.orientation === 'bottom'; }
+
+  // ── Layout ───────────────────────────────────────────────────────────────
+  _buildLayout() {
+    this._layoutDirty = false;
+    this._itemRects   = [];
+    this._subCache    = null;
+    this._subCacheFor = -1;
+
+    push();
+    textSize(this._fontSize);
+    if (this.theme.font) textFont(this.theme.font);
+
+    if (this._isHoriz()) {
+      // 'bottom' auto-sticks to the canvas bottom edge
+      const by = this.orientation === 'bottom' ? height - this._barH : this.y;
+      let ix = this.x;
+      for (let i = 0; i < this.items.length; i++) {
+        const { label, sub } = this._parsed(i);
+        const w = Math.ceil(textWidth(label)) + this._itemPadX * 2 + (sub ? 14 : 0);
+        this._itemRects.push({ x: ix, y: by, w, h: this._barH });
+        ix += w;
+      }
+      this.width  = this._explicitW ?? (ix - this.x);
+      this.height = this._barH;
+    } else {
+      // left / right — find widest label first
+      let maxW = 60;
+      for (let i = 0; i < this.items.length; i++) {
+        const { label, sub } = this._parsed(i);
+        const w = Math.ceil(textWidth(label)) + this._itemPadX * 2 + (sub ? 14 : 0);
+        if (w > maxW) maxW = w;
+      }
+      const barW = this._explicitW ?? maxW;
+      // 'right' auto-sticks to the canvas right edge; 'popup' uses x as-is
+      const bx = this.orientation === 'right' ? width - barW : this.x;
+      let iy = this.y;
+      for (let i = 0; i < this.items.length; i++) {
+        this._itemRects.push({ x: bx, y: iy, w: barW, h: this._barH });
+        iy += this._barH;
+      }
+      this.width  = barW;
+      this.height = iy - this.y;
+    }
+    pop();
+  }
+
+  _buildSubRects(idx) {
+    if (this._subCacheFor === idx && this._subCache) return this._subCache;
+    const { sub } = this._parsed(idx);
+    if (!sub || !sub.length) return [];
+    const ir = this._itemRects[idx];
+
+    push();
+    textSize(this._fontSize);
+    if (this.theme.font) textFont(this.theme.font);
+    let maxW = 80;
+    for (const s of sub) {
+      const w = Math.ceil(textWidth(s)) + this._itemPadX * 2;
+      if (w > maxW) maxW = w;
+    }
+    pop();
+
+    const sh = sub.length * this._subItemH;
+    let sx, sy;
+    switch (this.orientation) {
+      case 'top':    sx = ir.x;          sy = ir.y + ir.h;      break;
+      case 'bottom': sx = ir.x;          sy = ir.y - sh;        break;
+      case 'left':   sx = ir.x + ir.w;   sy = ir.y;             break;
+      case 'right':  sx = ir.x - maxW;   sy = ir.y;             break;
+      case 'popup': {
+        const onLeft = ir.x + ir.w / 2 < width / 2;
+        sx = onLeft ? ir.x + ir.w : ir.x - maxW;
+        sy = ir.y;
+        break;
+      }
+      default:       sx = ir.x;          sy = ir.y + ir.h;
+    }
+
+    this._subCache    = sub.map((s, j) => ({
+      x: sx, y: sy + j * this._subItemH, w: maxW, h: this._subItemH, label: s,
+    }));
+    this._subCacheFor = idx;
+    return this._subCache;
+  }
+
+  // ── Hit testing ──────────────────────────────────────────────────────────
+  _hitItem(mx, my) {
+    for (let i = 0; i < this._itemRects.length; i++) {
+      const r = this._itemRects[i];
+      if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) return i;
+    }
+    return -1;
+  }
+
+  _hitSub(mx, my) {
+    if (this._openIdx < 0) return -1;
+    const subs = this._buildSubRects(this._openIdx);
+    for (let j = 0; j < subs.length; j++) {
+      const r = subs[j];
+      if (mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + r.h) return j;
+    }
+    return -1;
+  }
+
+  // ── Events ───────────────────────────────────────────────────────────────
+  mousePressed() {
+    if (this.disabled || this._layoutDirty) return;
+
+    const i = this._hitItem(mouseX, mouseY);
+    if (i >= 0) {
+      const { label, sub } = this._parsed(i);
+      if (sub && sub.length) {
+        this._openIdx    = this._openIdx === i ? -1 : i;
+        this._subCache   = null;
+        this._subCacheFor = -1;
+      } else {
+        if (this.onChange) this.onChange(label, [label]);
+        this._openIdx = -1;
+      }
+      return;
+    }
+
+    if (this._openIdx >= 0) {
+      const j = this._hitSub(mouseX, mouseY);
+      if (j >= 0) {
+        const parent = this._parsed(this._openIdx);
+        const subLabel = parent.sub[j];
+        if (this.onChange) this.onChange(subLabel, [parent.label, subLabel]);
+        this._openIdx    = -1;
+        this._subCache   = null;
+        this._subCacheFor = -1;
+        return;
+      }
+      // Click outside menu — close submenu
+      this._openIdx    = -1;
+      this._subCache   = null;
+      this._subCacheFor = -1;
+    }
+  }
+
+  mouseMoved() {
+    if (this.disabled) return;
+    this._hoverIdx    = this._hitItem(mouseX, mouseY);
+    this._hoverSubIdx = this._hitSub(mouseX, mouseY);
+  }
+
+  mouseDragged() { this.mouseMoved(); }
+
+  // ── Draw ─────────────────────────────────────────────────────────────────
+  draw() {
+    this._markDrawn();
+    const { theme } = this;
+    const gc = drawingContext;
+
+    if (this._layoutDirty) this._buildLayout();
+
+    // Use actual item rect origin — 'right'/'bottom' auto-position away from this.x/y
+    const bx    = this._itemRects.length ? this._itemRects[0].x : this.x;
+    const by    = this._itemRects.length ? this._itemRects[0].y : this.y;
+    const horiz = this._isHoriz();
+    const barW  = this.width;
+    const barH  = horiz ? this._barH : this.height;
+
+    // ── Bar background with bevel gradient ───────────────────────────────
+    gc.save();
+    gc.beginPath();
+    if (gc.roundRect) gc.roundRect(bx, by, barW, barH, 3); else gc.rect(bx, by, barW, barH);
+    gc.clip();
+    gc.fillStyle = theme.capBody;
+    gc.fillRect(bx, by, barW, barH);
+    // Gradient runs top→bottom for horiz bars, left→right for vertical bars
+    const grad = horiz
+      ? gc.createLinearGradient(bx, by, bx, by + this._barH)
+      : gc.createLinearGradient(bx, by, bx + this._barH, by);
+    grad.addColorStop(0,   'rgba(255,255,255,0.22)');
+    grad.addColorStop(0.4, 'rgba(255,255,255,0.06)');
+    grad.addColorStop(1,   'rgba(0,0,0,0.18)');
+    gc.fillStyle = grad;
+    gc.fillRect(bx, by, barW, barH);
+    gc.restore();
+
+    // Border
+    push();
+    noFill(); stroke(theme.panelStroke); strokeWeight(1);
+    rect(bx, by, barW, barH, 3);
+
+    // Item separators
+    const sepC = lerpColor(color(theme.capBody), color(theme.panelStroke), 0.45);
+    stroke(sepC); strokeWeight(1);
+    for (let i = 1; i < this._itemRects.length; i++) {
+      const ir = this._itemRects[i];
+      if (horiz) {
+        line(ir.x, by + 5, ir.x, by + this._barH - 5);
+      } else {
+        line(bx + 5, ir.y, bx + barW - 5, ir.y);
+      }
+    }
+    pop();
+
+    // ── Top-level items ──────────────────────────────────────────────────
+    push();
+    textSize(this._fontSize);
+    if (theme.font) textFont(theme.font);
+    noStroke();
+
+    const arrows = { top: '▾', bottom: '▴', left: '▸', right: '◂' };
+
+    // For 'popup', determine submenu direction once from the first item rect
+    const popupOnLeft = this.orientation === 'popup' && this._itemRects.length
+      ? this._itemRects[0].x + this._itemRects[0].w / 2 < width / 2
+      : true;
+
+    for (let i = 0; i < this.items.length; i++) {
+      const { label, sub } = this._parsed(i);
+      const ir = this._itemRects[i];
+      const active = this._hoverIdx === i || this._openIdx === i;
+
+      if (active) {
+        fill(theme.capIndicator);
+        rect(ir.x + 1, ir.y + 1, ir.w - 2, ir.h - 2, 2);
+      }
+
+      fill(active ? theme.readoutBg : theme.scaleText);
+      textAlign(LEFT, CENTER);
+
+      // Arrow goes on the left for 'right' orientation and for 'popup' on the right half
+      const arrowOnLeft = this.orientation === 'right' ||
+                          (this.orientation === 'popup' && !popupOnLeft);
+      const labelX = (arrowOnLeft && sub) ? ir.x + 16 : ir.x + this._itemPadX;
+      text(label, labelX, ir.y + ir.h / 2);
+
+      if (sub) {
+        if (arrowOnLeft) {
+          textAlign(LEFT, CENTER);
+          text('◂', ir.x + 4, ir.y + ir.h / 2);
+        } else {
+          const arrow = this.orientation === 'popup' ? '▸' : (arrows[this.orientation] ?? '▸');
+          textAlign(RIGHT, CENTER);
+          text(arrow, ir.x + ir.w - 5, ir.y + ir.h / 2);
+        }
+      }
+    }
+    pop();
+
+    // ── Open submenu ─────────────────────────────────────────────────────
+    if (this._openIdx >= 0) {
+      const subs = this._buildSubRects(this._openIdx);
+      if (subs.length) {
+        const sx = subs[0].x;
+        const sy = subs[0].y;
+        const sw = subs[0].w;
+        const sh = subs.length * this._subItemH;
+
+        // Drop shadow + background
+        gc.save();
+        gc.shadowColor   = 'rgba(0,0,0,0.28)';
+        gc.shadowBlur    = 10;
+        gc.shadowOffsetX = 1;
+        gc.shadowOffsetY = 3;
+        gc.fillStyle     = theme.panel;
+        gc.beginPath();
+        if (gc.roundRect) gc.roundRect(sx, sy, sw, sh, 4); else gc.rect(sx, sy, sw, sh);
+        gc.fill();
+        gc.restore();
+
+        // Border + row separators
+        push();
+        noFill(); stroke(theme.panelStroke); strokeWeight(1);
+        rect(sx, sy, sw, sh, 4);
+        stroke(lerpColor(color(theme.panel), color(theme.panelStroke), 0.35));
+        for (let j = 1; j < subs.length; j++) {
+          line(sx + 4, subs[j].y, sx + sw - 4, subs[j].y);
+        }
+        pop();
+
+        // Sub-item labels
+        push();
+        textSize(this._fontSize);
+        if (theme.font) textFont(theme.font);
+        textAlign(LEFT, CENTER);
+        noStroke();
+
+        for (let j = 0; j < subs.length; j++) {
+          const sr = subs[j];
+          const hov = this._hoverSubIdx === j;
+          if (hov) {
+            fill(theme.capIndicator);
+            rect(sr.x + 2, sr.y + 1, sr.w - 4, sr.h - 2, 2);
+          }
+          fill(hov ? theme.readoutBg : theme.scaleText);
+          text(sr.label, sr.x + this._itemPadX, sr.y + sr.h / 2);
+        }
+        pop();
+      }
+    }
+
+    if (this.disabled) this._drawDisabled(bx, by, barW, barH);
+  }
+}
+
+window.Menu = Menu;

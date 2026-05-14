@@ -139,6 +139,27 @@ const AnalogThemes = {
     disabledOverlay: '#00000066',
     font:            null,
   },
+  dimpled: {
+    bg:              '#8e9099',
+    panel:           '#a0a8b0',
+    panelStroke:     '#6a7078',
+    track:           '#707880',
+    trackStroke:     '#505860',
+    capBody:         '#9aa2aa',
+    capHighlight:    '#d0d8e0',
+    capShadow:       '#606870',
+    capIndicator:    '#0088cc',
+    scaleText:       '#3a4048',
+    scaleTick:       '#6a7078',
+    label:           '#202830',
+    readout:         '#101820',
+    readoutBg:       '#000000',
+    tooltip:         '#101820',
+    tooltipBg:       '#d0d8e0dd',
+    hoverGlow:       '#0088cc33',
+    disabledOverlay: '#00000044',
+    font:            null,
+  },
   yellow: {
     bg:              '#e0d000',
     panel:           '#c0a800',
@@ -167,6 +188,7 @@ function analogBackground() {
   background(theme.bg);
   if (AnalogStyle === 'brushed')   _drawBrushedOverlay(theme);
   if (AnalogStyle === 'stainless') _drawStainlessOverlay(theme);
+  if (AnalogStyle === 'dimpled')   _drawDimpledOverlay(theme);
 }
 
 function _drawBrushedOverlay(theme) {
@@ -189,6 +211,32 @@ function _drawBrushedOverlay(theme) {
     const d = v * 18 + sheen;
     gc.fillStyle = `rgb(${(br + d) | 0},${(bg_ + d) | 0},${(bb + d) | 0})`;
     gc.fillRect(0, y, w, 1);
+  }
+  gc.restore();
+}
+
+function _drawDimpledOverlay(theme) {
+  const gc      = drawingContext;
+  const spacing = 12;
+  const r       = 2.5;
+
+  gc.save();
+  let row = 0;
+  for (let gy = spacing / 2; gy < height; gy += spacing) {
+    const xOffset = (row % 2 === 1) ? spacing / 2 : 0;
+    for (let gx = spacing / 2 + xOffset; gx < width + spacing; gx += spacing) {
+      // Outer dark depression
+      gc.beginPath();
+      gc.arc(gx, gy, r, 0, Math.PI * 2);
+      gc.fillStyle = 'rgba(0,0,0,0.18)';
+      gc.fill();
+      // Inner specular highlight — light catching the rim
+      gc.beginPath();
+      gc.arc(gx - 0.6, gy - 0.6, r * 0.5, 0, Math.PI * 2);
+      gc.fillStyle = 'rgba(255,255,255,0.20)';
+      gc.fill();
+    }
+    row++;
   }
   gc.restore();
 }

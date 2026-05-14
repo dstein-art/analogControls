@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AnalogControls — Documentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,7 +21,7 @@
       --code-text: #d4d4d8;
       --nav-bg:    #ffffffee;
       --nav-h:     52px;
-      --max-w:     860px;
+      --max-w:     1100px;
       --radius:    6px;
     }
 
@@ -294,7 +295,7 @@
     .opts td:first-child  { font-family: monospace; color: var(--accent); white-space: nowrap; font-size: 13px; }
     .opts td:nth-child(2) { font-family: monospace; color: #8888aa; white-space: nowrap; font-size: 13px; }
     .opts td:nth-child(3) { font-family: monospace; color: var(--accent2); white-space: nowrap; font-size: 13px; }
-    .opts td:last-child   { color: var(--muted); }
+    .opts td:last-child   { color: var(--muted); white-space: normal; }
 
     /* ── Code blocks ── */
     pre {
@@ -496,14 +497,33 @@
     <a href="#selectors">Selectors</a>
     <div class="nav-submenu">
       <a href="#switch">Switch</a>
+      <a href="#iconButton">IconButton</a>
       <a href="#selector">Selector</a>
       <a href="#tagSelector">TagSelector</a>
+      <a href="#sliderSelector">SliderSelector</a>
     </div>
   </div>
   <span class="sep">·</span>
-  <a href="#panel">Panel</a>
+  <div class="nav-group">
+    <a href="#panel">Panel</a>
+    <div class="nav-submenu">
+      <a href="#panel">Panel</a>
+      <a href="#messageDialog">MessageDialog</a>
+      <a href="#inputDialog">InputDialog</a>
+    </div>
+  </div>
   <span class="sep">·</span>
-  <a href="#displays">Displays</a>
+  <a href="#menu">Menu</a>
+  <span class="sep">·</span>
+  <div class="nav-group">
+    <a href="#displays">Displays</a>
+    <div class="nav-submenu">
+      <a href="#vumeter">VUMeter</a>
+      <a href="#vudial">VUDial</a>
+      <a href="#ledmeter">LEDMeter</a>
+      <a href="#adsr">ADSRDisplay</a>
+    </div>
+  </div>
   <span class="sep">·</span>
   <a href="#themes">Themes &amp; Styles</a>
   <span class="sep">·</span>
@@ -657,6 +677,8 @@
     </div>
     <p class="desc"><strong>wheel</strong> — a cylinder visible through a slot. Ribs scroll with the value position; center notches mark the midpoint. Vertical: horizontal ribs, width defaults to 50px. Horizontal: vertical ribs, full slot is draggable. Scale defaults to off.</p>
     <p class="desc"><strong>button</strong> — a minimal thin-groove track with a spherical circular cap. Works in both orientations. Width defaults to 40px and scale defaults to off.</p>
+
+    <hr>
 
     <h2 id="multislider">MultiSlider <span class="tag ext">Input</span></h2>
     <p class="desc">Several <code>AnalogSlider</code> faders arranged side-by-side in a single unit — useful for equalizers, mixer channel strips, or any bank of related faders. A single <code>onChange</code>/<code>onRelease</code> fires whenever any child slider changes, receiving a <code>name → value</code> object covering all sliders at once.</p>
@@ -902,6 +924,8 @@
       </div>
     </div>
 
+    <hr>
+
     <h2 id="multidial">MultiDial <span class="tag ext">Input</span></h2>
     <p class="desc">Several <code>Dial</code> knobs arranged side-by-side in a single unit. A single <code>onChange</code>/<code>onRelease</code> fires whenever any dial changes, receiving a <code>name → value</code> object. A raised bevel panel frames the group. All dials share options by default; individual dials can override with per-dial objects.</p>
 
@@ -1055,6 +1079,8 @@
       </div>
       <iframe class="example-frame" src="example.html?c=xypad_spring" width="260" height="260" scrolling="no" frameborder="0" loading="lazy" title="XYPad spring-back live example"></iframe>
     </div>
+
+    <hr>
 
     <h2 id="gridpad">GridPad <span class="tag ext">Input</span></h2>
     <p class="desc">A 2-D grid of cells with four modes: <strong>toggle</strong> flips each cell 0 ↔ 1 on click; <strong>percent</strong> raises or lowers each cell's 0–1 value while the mouse is held; <strong>button</strong> treats each cell as a momentary key with press/release callbacks and no stored value; <strong>colorselect</strong> cycles each cell through a list of colours on each click, with each colour mapped to a semantic value. Optional horizontal and vertical grouping draws a bevel separator every N cells. Double-click the label to reset all cells to their initial values.</p>
@@ -1252,6 +1278,76 @@ sw.states[sw.state]  <span class="cmt">// active label string</span></code></pre
       <iframe class="example-frame" src="example.html?c=switchn" width="130" height="175" scrolling="no" frameborder="0" loading="lazy" title="Switch N-state live example"></iframe>
     </div>
 
+    <hr>
+
+    <h2 id="iconButton">IconButton <span class="tag ext">Input</span></h2>
+    <p class="desc">A square push button that renders a <a href="https://fonts.google.com/icons" target="_blank">Material Symbols</a> icon at its centre. Pass any icon name from the Material Symbols Outlined set as the <code>icon</code> option — the font is already included via the page's <code>&lt;link&gt;</code> tag. Supports momentary (default) and toggle modes. An optional text label is drawn inside the button below the icon.</p>
+
+    <div class="sig">new IconButton(opts)</div>
+
+    <div class="note"><strong>Material Symbols font required.</strong> Add this to your <code>&lt;head&gt;</code>:<br>
+      <code>&lt;link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&amp;display=block" rel="stylesheet"&gt;</code>
+    </div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>icon</td><td>string</td><td>'star'</td><td>Material Symbols icon name, e.g. <code>'play_arrow'</code>, <code>'volume_up'</code>, <code>'settings'</code>. Full list at <a href="https://fonts.google.com/icons" target="_blank">fonts.google.com/icons</a>.</td></tr>
+        <tr><td>size</td><td>number</td><td>44</td><td>Width and height of the button in pixels. Both dimensions are equal.</td></tr>
+        <tr><td>toggle</td><td>boolean</td><td>false</td><td>When <code>true</code> the button latches on each click, toggling <code>.state</code> between <code>true</code> and <code>false</code>. When <code>false</code> (default) the button fires once per click and does not latch.</td></tr>
+        <tr><td>state</td><td>boolean</td><td>false</td><td>Initial toggle state. Only meaningful when <code>toggle: true</code>.</td></tr>
+        <tr><td>iconSize</td><td>number</td><td>auto</td><td>Icon font size in pixels. Defaults to <code>round(size × 0.58)</code>.</td></tr>
+        <tr><td>x, y</td><td>number</td><td>0, 0</td><td>Canvas position of the top-left corner.</td></tr>
+        <tr><td>label</td><td>string</td><td>''</td><td>Text caption drawn inside the button below the icon.</td></tr>
+        <tr><td>onClick</td><td>function</td><td>null</td><td>Called on release. For toggle buttons receives the new <code>state</code> (<code>true</code>/<code>false</code>); for momentary buttons called with no arguments.</td></tr>
+        <tr><td>disabled</td><td>boolean</td><td>false</td><td>Suppresses all interaction and draws a disabled overlay.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties</h3>
+    <table class="opts">
+      <thead><tr><th>Property</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>.state</code></td><td>Read/write. Current toggle state (<code>true</code>/<code>false</code>). Setting programmatically does not fire <code>onClick</code>.</td></tr>
+        <tr><td><code>.icon</code></td><td>Read/write. Change the displayed icon at any time.</td></tr>
+        <tr><td><code>.disabled</code></td><td>Read/write. Disables or re-enables the button.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const play = new IconButton({
+  x: 20, y: 20,
+  icon: 'play_arrow',
+  size: 52,
+  label: 'PLAY',
+  onClick: () => console.log('play'),
+});
+const stop = new IconButton({
+  x: 90, y: 20,
+  icon: 'stop',
+  size: 52,
+  label: 'STOP',
+  onClick: () => console.log('stop'),
+});
+const loop = new IconButton({
+  x: 160, y: 20,
+  icon: 'loop',
+  size: 52,
+  toggle: true,
+  label: 'LOOP',
+  onClick: s => console.log('loop', s),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=iconButton" width="220" height="180" scrolling="no" frameborder="0" loading="lazy" title="IconButton live example"></iframe>
+    </div>
+
+    <hr>
+
     <h2 id="selector">Selector <span class="tag ext">Input</span></h2>
     <p class="desc">A multi-style option selector. Set <code>style</code> to choose the visual style. Scroll wheel and touch work for all styles. Double-click the selection display or the label to reset to the initial option (double-clicking the arrow buttons or gear wheel advances state as normal).</p>
 
@@ -1366,7 +1462,67 @@ sw.states[sw.state]  <span class="cmt">// active label string</span></code></pre
       </div>
       <iframe class="example-frame" src="example.html?c=tagSelector" width="260" height="130" scrolling="no" frameborder="0" loading="lazy" title="TagSelector live example"></iframe>
     </div>
+    <hr>
+
+    <h2 id="sliderSelector">SliderSelector <span class="tag ext">Input</span></h2>
+    <p class="desc">A vertical fader that snaps to discrete string options. It looks and behaves like an <a href="#slider">AnalogSlider</a> — same panel, track, and brushed-metal cap — but instead of a continuous numeric range the slider clicks into one of the provided option strings. Tick marks at each position are drawn to the right of the track, and the active option's tick and label are highlighted in the accent colour. Scroll-wheel steps through options when hovering.</p>
+
+    <div class="sig">new SliderSelector(opts)</div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>options</td><td>string[]</td><td>[]</td><td>The ordered list of selectable strings. Index 0 appears at the top of the track, the last index at the bottom.</td></tr>
+        <tr><td>state</td><td>number</td><td>0</td><td>Initial selected index.</td></tr>
+        <tr><td>style</td><td>string</td><td>'knob'</td><td><code>'knob'</code> — brushed-metal rectangular fader cap. <code>'button'</code> — circular cap with a radial gradient, matching the AnalogSlider button style.</td></tr>
+        <tr><td>x, y</td><td>number</td><td>20, 20</td><td>Canvas position.</td></tr>
+        <tr><td>width</td><td>number</td><td>auto</td><td>Panel width. Defaults to a size that fits the longest option label with padding.</td></tr>
+        <tr><td>height</td><td>number</td><td>auto</td><td>Panel height. Defaults to enough vertical space for all options at 22 px spacing (min 80 px).</td></tr>
+        <tr><td>label</td><td>string</td><td>''</td><td>Caption rendered at the top of the panel.</td></tr>
+        <tr><td>onChange</td><td>function</td><td>null</td><td>Called with <code>(index, string)</code> whenever the selection changes during drag or scroll.</td></tr>
+        <tr><td>onRelease</td><td>function</td><td>null</td><td>Called with <code>(index, string)</code> on mouse release.</td></tr>
+        <tr><td>disabled</td><td>boolean</td><td>false</td><td>Disables interaction and renders a translucent overlay.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties</h3>
+    <table class="opts">
+      <thead><tr><th>Property</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>.state</code></td><td>Current selected index (read/write).</td></tr>
+        <tr><td><code>.value</code></td><td>Getter — returns <code>options[state]</code> as a string. Setter accepts a string and updates <code>state</code> to its index (no-op if not found).</td></tr>
+        <tr><td><code>.options</code></td><td>The options array (read/write). Reassign to change the available choices; update <code>.state</code> if needed.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Interaction</h3>
+    <table class="opts">
+      <thead><tr><th>Gesture</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>Drag cap</td><td>Moves the cap; snaps to the nearest option tick as you drag.</td></tr>
+        <tr><td>Scroll wheel</td><td>Steps one option up or down when hovering over the control.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const mode = new SliderSelector({
+  x: 20, y: 14,
+  options: ['REVERB', 'DELAY', 'CHORUS', 'FLANGER', 'PHASER'],
+  state: 1,
+  label: 'FX MODE',
+  onChange: (i, v) => console.log(i, v),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=sliderSelector" width="260" height="160" scrolling="no" frameborder="0" loading="lazy" title="SliderSelector live example"></iframe>
+    </div>
   </section>
+
+  <hr>
 
   <!-- Panel -->
   <section id="panel">
@@ -1384,6 +1540,8 @@ sw.states[sw.state]  <span class="cmt">// active label string</span></code></pre
           <tr><td>visible</td><td>boolean</td><td>true</td><td>Initial visibility. Set <code>panel.visible = false</code> to hide the panel and suppress all child events.</td></tr>
           <tr><td>label</td><td>string</td><td>''</td><td>Title shown in a bar at the top of the panel. When set, the scrollable content area starts below the bar and a minimize/maximize button appears on the right side of the bar. No title bar is shown when empty.</td></tr>
           <tr><td>minimized</td><td>boolean</td><td>false</td><td>Initial minimized state. When <code>true</code> the panel starts collapsed to just the title bar.</td></tr>
+          <tr><td>minimizable</td><td>boolean</td><td>true</td><td>When <code>false</code> the <strong>−/+</strong> toggle button is hidden and the panel cannot be collapsed.</td></tr>
+          <tr><td>movable</td><td>boolean</td><td>true</td><td>When <code>false</code> dragging the title bar does not reposition the panel.</td></tr>
           <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
         </tbody>
       </table>
@@ -1397,6 +1555,8 @@ sw.states[sw.state]  <span class="cmt">// active label string</span></code></pre
           <tr><td><code>.add(control)</code></td><td>Attach an AnalogControl to the panel. The control is removed from the global registry and managed by the panel from that point on. Returns <code>this</code> for chaining.</td></tr>
           <tr><td><code>.visible</code></td><td>Get/set panel visibility. When set to <code>false</code> the panel and all children stop drawing and receiving events.</td></tr>
           <tr><td><code>.minimized</code></td><td>Get/set minimized state. When <code>true</code> the panel collapses to only the title bar; the small <strong>−/+</strong> button in the title bar also toggles this.</td></tr>
+          <tr><td><code>.minimizable</code></td><td>Read/write. Hides the toggle button and disables collapse when <code>false</code>.</td></tr>
+          <tr><td><code>.movable</code></td><td>Read/write. Prevents title-bar dragging when <code>false</code>.</td></tr>
           <tr><td><code>.scrollX / .scrollY</code></td><td>Current scroll offset in pixels. Read or write to programmatically scroll the panel.</td></tr>
         </tbody>
       </table>
@@ -1461,6 +1621,195 @@ for (let i = 0; i &lt; 4; i++) {
 
   <hr>
 
+  <!-- MessageDialog -->
+  <section id="messageDialog">
+    <h2>MessageDialog <span class="tag ext">Container</span></h2>
+    <p class="desc">A self-sizing, movable dialog that displays a formatted text message and optional action buttons. The message string is word-wrapped to fit the dialog width. Buttons are arranged in a single row at the bottom; if multiple buttons are provided the dialog widens automatically to fit them all on one line. Drag the title bar to reposition.</p>
+
+    <div class="sig">new MessageDialog(opts)</div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>message</td><td>string</td><td>''</td><td>The text to display. Use <code>\n</code> for explicit line breaks. Long lines are wrapped automatically to fit the dialog width.</td></tr>
+        <tr><td>buttons</td><td>string[]</td><td>[]</td><td>Button labels shown in a row at the bottom of the dialog. Omit or pass an empty array for a message-only dialog.</td></tr>
+        <tr><td>x, y</td><td>number</td><td>20, 20</td><td>Canvas position.</td></tr>
+        <tr><td>width</td><td>number</td><td>auto</td><td>Dialog width. Defaults to at least 220 px or wide enough to fit all buttons on one row, whichever is larger.</td></tr>
+        <tr><td>label</td><td>string</td><td>''</td><td>Title bar text. When set a styled title bar is shown at the top and the dialog can be repositioned by dragging it.</td></tr>
+        <tr><td>movable</td><td>boolean</td><td>true</td><td>When <code>false</code> the dialog cannot be dragged.</td></tr>
+        <tr><td>onButton</td><td>function</td><td>null</td><td>Called with <code>(index, label)</code> when a button is clicked.</td></tr>
+        <tr><td>disabled</td><td>boolean</td><td>false</td><td>Disables interaction and renders a translucent overlay.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties</h3>
+    <table class="opts">
+      <thead><tr><th>Property</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>.message</code></td><td>Read/write. Reassigning triggers a layout rebuild on the next draw so the dialog resizes to fit the new text.</td></tr>
+        <tr><td><code>.buttons</code></td><td>Read/write. Reassigning the array rebuilds the button row on the next draw.</td></tr>
+        <tr><td><code>.movable</code></td><td>Read/write. Toggle whether the dialog can be dragged at runtime.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const dlg = new MessageDialog({
+  x: 20, y: 20,
+  label: 'Confirm',
+  message: 'Are you sure you want to discard all unsaved changes? This cannot be undone.',
+  buttons: ['Cancel', 'Discard'],
+  onButton: (i, lbl) => console.log(i, lbl),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=messageDialog" width="290" height="175" scrolling="no" frameborder="0" loading="lazy" title="MessageDialog live example"></iframe>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- InputDialog -->
+  <section id="inputDialog">
+    <h2>InputDialog <span class="tag ext">Container</span></h2>
+    <p class="desc">Extends <a href="#messageDialog">MessageDialog</a> with a single-line text input field between the message and the buttons. Clicking the input field captures keyboard events for typing, cursor movement, and editing. The cursor blinks and the text scrolls horizontally when the value overflows the field width. Pressing <kbd>Enter</kbd> fires <code>onSubmit</code>; clicking outside the field removes focus.</p>
+
+    <div class="sig">new InputDialog(opts)</div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>message</td><td>string</td><td>''</td><td>Instructional text above the input. Supports <code>\n</code> and auto word-wraps.</td></tr>
+        <tr><td>inputValue</td><td>string</td><td>''</td><td>Initial text in the input field.</td></tr>
+        <tr><td>inputPlaceholder</td><td>string</td><td>''</td><td>Greyed hint text shown when the field is empty and unfocused.</td></tr>
+        <tr><td>buttons</td><td>string[]</td><td>[]</td><td>Button labels in a row at the bottom.</td></tr>
+        <tr><td>x, y</td><td>number</td><td>20, 20</td><td>Canvas position.</td></tr>
+        <tr><td>width</td><td>number</td><td>auto</td><td>Dialog width. Defaults to at least 220 px or wide enough to fit all buttons.</td></tr>
+        <tr><td>label</td><td>string</td><td>''</td><td>Title bar text. When set the dialog can be dragged.</td></tr>
+        <tr><td>movable</td><td>boolean</td><td>true</td><td>When <code>false</code> the dialog cannot be dragged.</td></tr>
+        <tr><td>onButton</td><td>function</td><td>null</td><td>Called with <code>(index, label)</code> when a button is clicked.</td></tr>
+        <tr><td>onSubmit</td><td>function</td><td>null</td><td>Called with the current <code>inputValue</code> string when <kbd>Enter</kbd> is pressed.</td></tr>
+        <tr><td>disabled</td><td>boolean</td><td>false</td><td>Disables all interaction.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties</h3>
+    <table class="opts">
+      <thead><tr><th>Property</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>.inputValue</code></td><td>Read/write. The current text in the field. Reassign to change it programmatically.</td></tr>
+        <tr><td><code>.inputPlaceholder</code></td><td>Read/write. Hint text shown when the field is empty and unfocused.</td></tr>
+        <tr><td><code>.message</code></td><td>Read/write. Reassigning triggers a layout rebuild on the next draw.</td></tr>
+        <tr><td><code>.buttons</code></td><td>Read/write. Reassigning rebuilds the button row on the next draw.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Keyboard interaction</h3>
+    <table class="opts">
+      <thead><tr><th>Key</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>Printable characters</td><td>Inserted at the cursor position.</td></tr>
+        <tr><td><kbd>Backspace</kbd> / <kbd>Delete</kbd></td><td>Removes the character before / after the cursor.</td></tr>
+        <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Moves the cursor one character.</td></tr>
+        <tr><td><kbd>Home</kbd> / <kbd>End</kbd></td><td>Jumps to the start or end of the text.</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Fires <code>onSubmit(inputValue)</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const dlg = new InputDialog({
+  x: 20, y: 20,
+  label: 'Rename',
+  message: 'Enter a new name for the channel:',
+  inputPlaceholder: 'Channel name...',
+  buttons: ['Cancel', 'OK'],
+  onSubmit: v => console.log('submit', v),
+  onButton: (i, lbl) => console.log(i, lbl),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=inputDialog" width="290" height="195" scrolling="no" frameborder="0" loading="lazy" title="InputDialog live example"></iframe>
+    </div>
+  </section>
+
+  <hr>
+
+  <section id="menu">
+    <h2>Menu <span class="tag ext">Input</span></h2>
+    <p class="desc">A menu bar that runs either along the top (<code>orientation: 'horizontal'</code>) or down the left side (<code>orientation: 'vertical'</code>). Items are defined as an array of strings; replace any string with an array to create a submenu — the first element of the array becomes the top-level label and the remaining elements are the submenu entries. Clicking a leaf item fires <code>onChange</code>; clicking a submenu parent toggles it open or closed.</p>
+
+    <div class="sig">new Menu(opts)</div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>items</td><td>Array</td><td>[]</td><td>Menu definition. Each entry is a <code>string</code> (leaf item) or a <code>string[]</code> (submenu) where <code>array[0]</code> is the top-level label and <code>array[1…n]</code> are the submenu entries.</td></tr>
+        <tr><td>orientation</td><td>string</td><td>'top'</td><td>Where the bar sits and which way submenus open: <code>'top'</code> — bar across the top, submenus open downward. <code>'bottom'</code> — bar across the bottom, submenus open upward. <code>'left'</code> — bar down the left side, submenus open rightward. <code>'right'</code> — bar down the right side, submenus open leftward. <code>'popup'</code> — floating vertical menu positioned at <code>x, y</code>; submenus and their arrow indicators automatically flip left or right depending on which half of the canvas the menu sits in.</td></tr>
+        <tr><td>x, y</td><td>number</td><td>0, 0</td><td>Canvas position of the top-left corner of the menu bar.</td></tr>
+        <tr><td>width</td><td>number</td><td>auto</td><td>Bar width. Horizontal: defaults to the total of all item widths. Vertical: defaults to the widest item label.</td></tr>
+        <tr><td>onChange</td><td>function</td><td>null</td><td>Called with <code>(label, path)</code> when a leaf item is selected. <code>label</code> is the selected item's text; <code>path</code> is an array of labels from root to selection, e.g. <code>['Edit', 'Undo']</code>.</td></tr>
+        <tr><td>disabled</td><td>boolean</td><td>false</td><td>Suppresses all interaction and draws a disabled overlay.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties</h3>
+    <table class="opts">
+      <thead><tr><th>Property</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>.items</code></td><td>Read/write. Reassign to change the menu structure. Set <code>_layoutDirty = true</code> after changing to force a layout rebuild.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Example — top</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const menu = new Menu({
+  x: 0, y: 0,
+  width: 400,
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=menu_top" width="400" height="120" scrolling="no" frameborder="0" loading="lazy" title="Menu top live example"></iframe>
+    </div>
+
+    <h3>Example — left</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const menu = new Menu({
+  x: 0, y: 0,
+  orientation: 'left',
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=menu_left" width="200" height="240" scrolling="no" frameborder="0" loading="lazy" title="Menu left live example"></iframe>
+    </div>
+  </section>
+
+  <hr>
+
   <!-- Displays: VUMeter, VUDial, LEDMeter, ADSRDisplay -->
   <section id="displays">
     <h2>Displays</h2>
@@ -1502,6 +1851,8 @@ for (let i = 0; i &lt; 4; i++) {
       <iframe class="example-frame" src="example.html?c=vumeter" width="90" height="265" scrolling="no" frameborder="0" loading="lazy" title="VUMeter live example"></iframe>
     </div>
 
+    <hr>
+
     <h2 id="vudial">VUDial <span class="tag ext">Display</span></h2>
     <p class="desc">Extends <strong>Dial</strong>. Replaces the filled arc with a ring of segmented LEDs with peak hold. Use <code>showKnob: false</code> for a pure meter ring, or <code>true</code> to show both the set position and the live level.</p>
 
@@ -1536,6 +1887,8 @@ for (let i = 0; i &lt; 4; i++) {
       </div>
       <iframe class="example-frame" src="example.html?c=vudial" width="165" height="165" scrolling="no" frameborder="0" loading="lazy" title="VUDial live example"></iframe>
     </div>
+
+    <hr>
 
     <h2 id="ledmeter">LEDMeter <span class="tag ext">Display</span></h2>
     <p class="desc">A 7-segment numeric display. Segments are drawn as beveled hexagons with a canvas glow. Values are right-aligned; if the number is too wide for the digit slots, all segments show <code>-----</code>. Assign <code>.value</code> each frame.</p>
@@ -1572,6 +1925,8 @@ for (let i = 0; i &lt; 4; i++) {
       <iframe class="example-frame" src="example.html?c=ledmeter" width="200" height="110" scrolling="no" frameborder="0" loading="lazy" title="LEDMeter live example"></iframe>
     </div>
     <div class="note"><strong>Panel width</strong> = <code>padding×2 + digits×digitW + (digits−1)×digitGap</code>. With defaults a 5-digit meter is <strong>106 px</strong> wide.</div>
+
+    <hr>
 
     <h2 id="adsr">ADSRDisplay <span class="tag ext">Display</span></h2>
     <p class="desc">A display-only ADSR envelope graph inside a beveled panel. The envelope shape updates live whenever any property changes — pair it with dials or sliders to visualise synth parameters in real time.</p>
@@ -1646,6 +2001,11 @@ for (let i = 0; i &lt; 4; i++) {
         <div class="label"><span class="accent-chip" style="background:#ff8800"></span>orange accent · sine-wave grain</div>
       </div>
       <div class="swatch">
+        <div class="bg-chip" style="background:linear-gradient(180deg,#8e9099 0%,#aab0b8 40%,#8e9099 100%)"></div>
+        <div class="name">dimpled</div>
+        <div class="label"><span class="accent-chip" style="background:#0088cc"></span>blue accent · dimpled circle texture</div>
+      </div>
+      <div class="swatch">
         <div class="bg-chip" style="background:#cc0000"></div>
         <div class="name">red</div>
         <div class="label"><span class="accent-chip" style="background:#ffdd00"></span>yellow accent</div>
@@ -1667,6 +2027,7 @@ for (let i = 0; i &lt; 4; i++) {
       <iframe class="example-frame" src="example.html?c=dialtheme&s=stainless&lbl=STEEL" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="stainless theme"></iframe>
       <iframe class="example-frame" src="example.html?c=dialtheme&s=white&lbl=WHITE" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="white theme"></iframe>
       <iframe class="example-frame" src="example.html?c=dialtheme&s=brushed&lbl=BRUSH" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="brushed theme"></iframe>
+      <iframe class="example-frame" src="example.html?c=dialtheme&s=dimpled&lbl=DIMPL" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="dimpled theme"></iframe>
       <iframe class="example-frame" src="example.html?c=dialtheme&s=red&lbl=RED" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="red theme"></iframe>
       <iframe class="example-frame" src="example.html?c=dialtheme&s=blue&lbl=BLUE" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="blue theme"></iframe>
       <iframe class="example-frame" src="example.html?c=dialtheme&s=yellow&lbl=YLW" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="yellow theme"></iframe>
@@ -1682,6 +2043,7 @@ for (let i = 0; i &lt; 4; i++) {
         <tr><td>stainless</td><td>Gaussian highlight profile: sharp specular band near the top third, soft secondary reflection below center, edge darkening, and a thin pure-white specular line at the peak.</td></tr>
         <tr><td>white</td><td>Flat fill — <code>#e8e8e8</code>.</td></tr>
         <tr><td>brushed</td><td>Three layered sine-wave frequencies (fine grain, visible stroke bands, slow tonal drift) plus a directional sheen band — simulates brushed aluminum.</td></tr>
+        <tr><td>dimpled</td><td>Brushed aluminum base with a grid of small dimpled circles (12 px spacing) — each dot has a dark outer ring and a lighter inner highlight. Blue accent.</td></tr>
         <tr><td>red</td><td>Flat fill — <code>#cc0000</code>. Primary red background, darker red controls, yellow accent.</td></tr>
         <tr><td>blue</td><td>Flat fill — <code>#0000cc</code>. Primary blue background, darker blue controls, yellow accent.</td></tr>
         <tr><td>yellow</td><td>Flat fill — <code>#e0d000</code>. Warm yellow background, golden controls, red accent · dark text.</td></tr>
@@ -1690,8 +2052,8 @@ for (let i = 0; i &lt; 4; i++) {
 
     <h3>Runtime style switching</h3>
     <p class="desc">Rebuild controls with <code>analogReset()</code> when switching styles. The <a href="demo.html" target="_blank">Live Demo</a> uses an <code>AnalogSwitch</code> to cycle all four styles.</p>
-    <pre><code><span class="kw">const</span> STYLES = [<span class="str">'black'</span>, <span class="str">'stainless'</span>, <span class="str">'white'</span>, <span class="str">'brushed'</span>, <span class="str">'red'</span>, <span class="str">'blue'</span>, <span class="str">'yellow'</span>];
-<span class="kw">const</span> LABELS = [<span class="str">'BLACK'</span>, <span class="str">'STEEL'</span>, <span class="str">'WHITE'</span>, <span class="str">'BRUSH'</span>, <span class="str">'RED'</span>, <span class="str">'BLUE'</span>, <span class="str">'YLW'</span>];
+    <pre><code><span class="kw">const</span> STYLES = [<span class="str">'black'</span>, <span class="str">'stainless'</span>, <span class="str">'white'</span>, <span class="str">'brushed'</span>, <span class="str">'dimpled'</span>, <span class="str">'red'</span>, <span class="str">'blue'</span>, <span class="str">'yellow'</span>];
+<span class="kw">const</span> LABELS = [<span class="str">'BLACK'</span>, <span class="str">'STEEL'</span>, <span class="str">'WHITE'</span>, <span class="str">'BRUSH'</span>, <span class="str">'DIMPL'</span>, <span class="str">'RED'</span>, <span class="str">'BLUE'</span>, <span class="str">'YLW'</span>];
 <span class="kw">let</span> currentStyle = <span class="str">'black'</span>;
 
 <span class="kw">function</span> <span class="fn">buildControls</span>() {

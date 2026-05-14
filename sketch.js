@@ -11,8 +11,8 @@ let controls  = [];
 let vuLevel   = 0;
 let _noiseT   = 0;  // time offset for Perlin noise
 
-const STYLES  = ['black', 'stainless', 'white', 'brushed', 'red', 'blue', 'yellow'];
-const LABELS  = ['BLACK', 'STEEL', 'WHITE', 'BRUSH', 'RED', 'BLUE', 'YLW'];
+const STYLES  = ['black', 'stainless', 'white', 'brushed', 'dimpled', 'red', 'blue', 'yellow'];
+const LABELS  = ['BLACK', 'STEEL', 'WHITE', 'BRUSH', 'DIMPL', 'RED', 'BLUE', 'YLW'];
 let   currentStyle = 'stainless';
 
 function buildControls() {

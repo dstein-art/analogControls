@@ -9,6 +9,7 @@
   </style>
 </head>
 <body>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <script src="AnalogControls.js"></script>
 <script src="CustomControls.js"></script>
@@ -46,10 +47,19 @@ const SIZES = {
   gridpad_colorselect:   [160, 155],
   adsr:            [260, 160],
   tagSelector:     [260, 130],
+  sliderSelector:  [260, 160],
   rangeslider:     [110, 265],
   rangeslider_h:   [260, 80],
   panel:           [320, 240],
   panel_scroll:    [260, 200],
+  messageDialog:   [290, 175],
+  inputDialog:     [290, 195],
+  iconButton:      [220, 180],
+  menu_top:        [400, 120],
+  menu_left:       [200, 240],
+  menu_bottom:     [400, 120],
+  menu_right:      [200, 240],
+  menu_popup:      [300, 200],
 };
 
 const [W, H] = SIZES[CTRL] || [300, 200];
@@ -390,6 +400,15 @@ const seq = new GridPad({
   onChange: v => console.log(v),
 });`,
 
+  sliderSelector: `\
+const sel = new SliderSelector({
+  x: 20, y: 14,
+  options: ['REVERB', 'DELAY', 'CHORUS', 'FLANGER', 'PHASER'],
+  state: 1,
+  label: ${label || "'FX MODE'"},
+  onChange: (i, v) => console.log(i, v),
+});`,
+
   tagSelector: `\
 const tags = new TagSelector({
   x: 20, y: 22,
@@ -478,6 +497,116 @@ for (let i = 0; i < 4; i++) {
     readout: 'raw', decimals: 0,
   }));
 }`,
+
+  inputDialog: `\
+const dlg = new InputDialog({
+  x: 20, y: 20,
+  label: ${label || "'Rename'"},
+  message: 'Enter a new name for the channel:',
+  inputPlaceholder: 'Channel name...',
+  buttons: ['Cancel', 'OK'],
+  onSubmit: v => console.log('submit', v),
+  onButton: (i, lbl) => console.log(i, lbl),
+});`,
+
+  iconButton: `\
+const play = new IconButton({
+  x: 20, y: 20,
+  icon: 'play_arrow',
+  size: 52,
+  label: 'PLAY',
+  onClick: () => console.log('play'),
+});
+const stop = new IconButton({
+  x: 90, y: 20,
+  icon: 'stop',
+  size: 52,
+  label: 'STOP',
+  onClick: () => console.log('stop'),
+});
+const loop = new IconButton({
+  x: 160, y: 20,
+  icon: 'loop',
+  size: 52,
+  toggle: true,
+  label: 'LOOP',
+  onClick: s => console.log('loop', s),
+});`,
+
+  menu_top: `\
+const menu = new Menu({
+  x: 0, y: 0,
+  width: 400,
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});`,
+
+  menu_left: `\
+const menu = new Menu({
+  x: 0, y: 0,
+  orientation: 'left',
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});`,
+
+  menu_bottom: `\
+const menu = new Menu({
+  x: 0, y: 0,
+  width: 400,
+  orientation: 'bottom',
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});`,
+
+  menu_right: `\
+const menu = new Menu({
+  x: 0, y: 0,
+  orientation: 'right',
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});`,
+
+  menu_popup: `\
+const menu = new Menu({
+  x: 20, y: 20,
+  orientation: 'popup',
+  items: [
+    'File',
+    ['Edit', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste'],
+    'View',
+    ['Help', 'About', 'Docs'],
+  ],
+  onChange: (lbl, path) => console.log(path),
+});`,
+
+  messageDialog: `\
+const dlg = new MessageDialog({
+  x: 20, y: 20,
+  label: ${label || "'Confirm'"},
+  message: 'Are you sure you want to discard all unsaved changes? This cannot be undone.',
+  buttons: ['Cancel', 'Discard'],
+  onButton: (i, lbl) => console.log(i, lbl),
+});`,
 };
 
 runCode(DEFAULTS[CTRL] || '');
