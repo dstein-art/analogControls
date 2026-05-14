@@ -2364,10 +2364,12 @@ class Panel extends AnalogControl {
     this._children  = [];
     this._scrollX   = 0;
     this._scrollY   = 0;
-    this._sbW       = 8;    // scrollbar thickness px
-    this._btnSz     = 10;   // minimize toggle button size px
-    this._dragSB    = null; // 'v' | 'h' | null
-    this._dragSBRef = null;
+    this._sbW          = 8;    // scrollbar thickness px
+    this._btnSz        = 10;   // minimize toggle button size px
+    this._dragSB       = null; // 'v' | 'h' | null
+    this._dragSBRef    = null;
+    this._draggingPanel = false;
+    this._dragPanelOff  = null; // {dx, dy} offset from panel origin at drag start
   }
 
   get visible()    { return this._visible; }
@@ -2466,6 +2468,13 @@ class Panel extends AnalogControl {
   mouseMoved() {
     if (!this._visible) return;
 
+    // Panel drag — move origin to follow mouse
+    if (this._draggingPanel && this._dragPanelOff) {
+      this.x = mouseX - this._dragPanelOff.dx;
+      this.y = mouseY - this._dragPanelOff.dy;
+      return;
+    }
+
     if (this._dragSB === 'v' && this._dragSBRef) {
       const dy    = mouseY - this._dragSBRef.my;
       const vh    = this._viewH();
@@ -2504,8 +2513,12 @@ class Panel extends AnalogControl {
       return;
     }
 
-    // Rest of title bar — no children there
-    if (mouseY < this.y + this._titleH) return;
+    // Title bar drag — grab anywhere else on the bar to move the panel
+    if (this._titleH > 0 && mouseY < this.y + this._titleH) {
+      this._draggingPanel = true;
+      this._dragPanelOff  = { dx: mouseX - this.x, dy: mouseY - this.y };
+      return;
+    }
 
     if (this._minimized) return;
 
@@ -2526,6 +2539,8 @@ class Panel extends AnalogControl {
 
   mouseReleased() {
     if (!this._visible) return;
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
     this._dragSB    = null;
     this._dragSBRef = null;
     if (!this._minimized) {
