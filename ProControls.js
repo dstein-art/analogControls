@@ -1,18 +1,18 @@
-// AnalogControls.js — base class + Slider for p5.js
+// ProControls.js — base class + Slider for p5.js
 
-// Set AnalogStyle before creating controls to choose a built-in look.
+// Set ControlStyle before creating controls to choose a built-in look.
 // Per-control overrides still work via opts.theme.
-//   AnalogStyle = 'black';     // dark electronic (default)
-//   AnalogStyle = 'stainless'; // polished chrome/steel
-//   AnalogStyle = 'white';     // Swiss/Braun minimalist
-//   AnalogStyle = 'brushed';   // brushed aluminum
-//   AnalogStyle = 'red';       // deep red studio console
-//   AnalogStyle = 'blue';      // deep navy broadcast
-//   AnalogStyle = 'yellow';    // warm amber/golden
+//   ControlStyle = 'black';     // dark electronic (default)
+//   ControlStyle = 'stainless'; // polished chrome/steel
+//   ControlStyle = 'white';     // Swiss/Braun minimalist
+//   ControlStyle = 'brushed';   // brushed aluminum
+//   ControlStyle = 'red';       // deep red studio console
+//   ControlStyle = 'blue';      // deep navy broadcast
+//   ControlStyle = 'yellow';    // warm amber/golden
 
-let AnalogStyle = 'black';
+let ControlStyle = 'black';
 
-const AnalogThemes = {
+const ProControlThemes = {
   black: {
     bg:              '#1a1a1a',
     panel:           '#2a2a2a',
@@ -183,12 +183,12 @@ const AnalogThemes = {
   },
 };
 
-function analogBackground() {
-  const theme = AnalogThemes[AnalogStyle] ?? AnalogThemes.black;
+function proControlBackground() {
+  const theme = ProControlThemes[ControlStyle] ?? ProControlThemes.black;
   background(theme.bg);
-  if (AnalogStyle === 'brushed')   _drawBrushedOverlay(theme);
-  if (AnalogStyle === 'stainless') _drawStainlessOverlay(theme);
-  if (AnalogStyle === 'dimpled')   _drawDimpledOverlay(theme);
+  if (ControlStyle === 'brushed')   _drawBrushedOverlay(theme);
+  if (ControlStyle === 'stainless') _drawStainlessOverlay(theme);
+  if (ControlStyle === 'dimpled')   _drawDimpledOverlay(theme);
 }
 
 function _drawBrushedOverlay(theme) {
@@ -285,17 +285,17 @@ function _drawStainlessOverlay(theme) {
 // Controls self-register on construction. p5.registerMethod hooks dispatch
 // events to every registered control so the sketch needs no event boilerplate.
 
-const _analogRegistry  = [];
+const _proControlRegistry  = [];
 const _drawnThisFrame  = new Set();
-let   _analogWired      = false;
-let   _analogWasPressed = false;
+let   _proControlWired      = false;
+let   _proControlWasPressed = false;
 const _analogWheelQ     = [];
 
 // Clear all registrations — call at the top of buildControls() when rebuilding.
-function analogReset() {
-  _analogRegistry.length = 0;
+function proControlReset() {
+  _proControlRegistry.length = 0;
   _drawnThisFrame.clear();
-  _analogWasPressed = false;
+  _proControlWasPressed = false;
 }
 
 // p5.prototype.registerMethod only supports lifecycle hooks (pre/post/init/remove),
@@ -303,8 +303,8 @@ function analogReset() {
 // p5 has already updated mouseX, mouseY, mouseIsPressed from DOM events.
 p5.prototype.registerMethod('pre', function () {
   // One-time canvas setup
-  if (!_analogWired) {
-    _analogWired = true;
+  if (!_proControlWired) {
+    _proControlWired = true;
     const canvas = this.canvas ?? document.querySelector('canvas');
     if (canvas) {
       canvas.style.touchAction = 'none';
@@ -317,23 +317,23 @@ p5.prototype.registerMethod('pre', function () {
   }
 
   // Dispatch hover / drag (safe to call every frame — uses current mouseX/mouseY)
-  for (const c of _analogRegistry) c.mouseMoved();
+  for (const c of _proControlRegistry) c.mouseMoved();
 
   // Detect press / release edge transitions using p5's mouseIsPressed global
   const down = mouseIsPressed;
-  if (down && !_analogWasPressed) {
-    for (const c of _analogRegistry) c.mousePressed();
-  } else if (!down && _analogWasPressed) {
-    for (const c of _analogRegistry) c.mouseReleased();
+  if (down && !_proControlWasPressed) {
+    for (const c of _proControlRegistry) c.mousePressed();
+  } else if (!down && _proControlWasPressed) {
+    for (const c of _proControlRegistry) c.mouseReleased();
   }
-  _analogWasPressed = down;
+  _proControlWasPressed = down;
 
   // Advance spring-back animations
-  for (const c of _analogRegistry) c._tickSpring();
+  for (const c of _proControlRegistry) c._tickSpring();
 
   // Drain wheel queue
   for (const e of _analogWheelQ) {
-    for (const c of _analogRegistry) c.mouseWheel(e);
+    for (const c of _proControlRegistry) c.mouseWheel(e);
   }
   _analogWheelQ.length = 0;
 });
@@ -341,7 +341,7 @@ p5.prototype.registerMethod('pre', function () {
 // Auto-draw: render every registered control that wasn't explicitly drawn
 // this frame. Fires after the sketch's draw() so background is already set.
 p5.prototype.registerMethod('post', function () {
-  for (const c of _analogRegistry) {
+  for (const c of _proControlRegistry) {
     if (!_drawnThisFrame.has(c)) c.draw();
   }
   _drawnThisFrame.clear();
@@ -349,7 +349,7 @@ p5.prototype.registerMethod('post', function () {
 
 // ─── Base ────────────────────────────────────────────────────────────────────
 
-class AnalogControl {
+class ProControl {
   constructor(opts = {}) {
     this.x        = opts.x        ?? 20;
     this.y        = opts.y        ?? 20;
@@ -361,7 +361,7 @@ class AnalogControl {
     this.onChange  = opts.onChange  ?? null;
     this.onRelease = opts.onRelease ?? null;
     this.scale    = opts.scale    ?? 'linear'; // 'linear' | 'log' (log requires min > 0)
-    const base    = AnalogThemes[AnalogStyle] ?? AnalogThemes.black;
+    const base    = ProControlThemes[ControlStyle] ?? ProControlThemes.black;
     this.theme    = Object.assign({}, base, opts.theme ?? {});
     this._hovered = false;
     this._active  = false;
@@ -374,7 +374,7 @@ class AnalogControl {
     this._springDefault  = opts.springDefault ?? this.value; // subclasses may override
     this._lastPressTime  = -9999;
 
-    _analogRegistry.push(this);
+    _proControlRegistry.push(this);
   }
 
   _isDoubleClick() {
@@ -387,8 +387,8 @@ class AnalogControl {
 
   // Unregister this control so it no longer receives events.
   remove() {
-    const i = _analogRegistry.indexOf(this);
-    if (i !== -1) _analogRegistry.splice(i, 1);
+    const i = _proControlRegistry.indexOf(this);
+    if (i !== -1) _proControlRegistry.splice(i, 1);
   }
 
   // Map value (or v) to [0,1]
@@ -509,7 +509,7 @@ class AnalogControl {
 
 // ─── Slider ──────────────────────────────────────────────────────────────────
 
-class AnalogSlider extends AnalogControl {
+class AnalogSlider extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.readout    = opts.readout    ?? 'raw';  // 'raw' | 'percent' | 'db'
@@ -1150,7 +1150,7 @@ class AnalogSlider extends AnalogControl {
 
 // ─── Dial ────────────────────────────────────────────────────────────────────
 
-class Dial extends AnalogControl {
+class Dial extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.size      = opts.size      ?? 70;
@@ -1512,7 +1512,7 @@ class Dial extends AnalogControl {
 
 // ─── Switch ───────────────────────────────────────────────────────────────────
 
-class Switch extends AnalogControl {
+class Switch extends ProControl {
   constructor(opts = {}) {
     super(opts);
     // states: array of labels, e.g. ['OFF','ON'] or ['A','B','C']
@@ -1705,13 +1705,13 @@ class Switch extends AnalogControl {
 }
 
 // ─── Export (global scope for p5 sketches) ───────────────────────────────────
-window.AnalogStyle       = AnalogStyle;    // read-only reflection; set via AnalogStyle = '...'
-window.AnalogThemes      = AnalogThemes;
-window.analogBackground  = analogBackground;
-window.analogReset       = analogReset;
-window.analogControls    = function() { return [..._analogRegistry]; };
-window.analogFullReset   = function() { _analogRegistry.length = 0; _drawnThisFrame.clear(); _analogWasPressed = false; _analogWired = false; };
-window.AnalogControl     = AnalogControl;
+window.ControlStyle       = ControlStyle;    // read-only reflection; set via ControlStyle = '...'
+window.ProControlThemes      = ProControlThemes;
+window.proControlBackground  = proControlBackground;
+window.proControlReset       = proControlReset;
+window.proControls    = function() { return [..._proControlRegistry]; };
+window.proControlFullReset   = function() { _proControlRegistry.length = 0; _drawnThisFrame.clear(); _proControlWasPressed = false; _proControlWired = false; };
+window.ProControl     = ProControl;
 window.AnalogSlider      = AnalogSlider;
 window.Switch            = Switch;
 window.AnalogSwitch      = Switch;        // backward-compat alias

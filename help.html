@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AnalogControls — Documentation</title>
+  <title>ProControls — Documentation</title>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -534,15 +534,14 @@
 <!-- ── Hero ── -->
 <div class="hero">
   <div class="hero-inner">
-    <div class="hero-eyebrow">p5.js Component Library</div>
     <h1>
-      <span class="accent">Analog</span><span class="dim">Controls</span>
+      <span class="accent">Pro</span><span class="dim">Controls</span> <span class="dim">for p5.js</span>
     </h1>
     <p class="hero-desc">
       Hardware-style UI components for p5.js — sliders, knobs, VU meters, XY pads, LED displays, and switches. Four built-in visual styles, touch-ready, zero event boilerplate.
     </p>
     <div class="hero-chips">
-      <span class="chip">AnalogControls.js</span>
+      <span class="chip">ProControls.js</span>
       <span class="chip">CustomControls.js</span>
       <span class="chip">p5.js 1.9+</span>
       <a href="demo.html" class="chip chip-demo" target="_blank">↗ Live Demo</a>
@@ -556,16 +555,16 @@
   <!-- Getting Started -->
   <section id="getting-started">
     <h2>Getting Started</h2>
-    <p class="desc">Load both script files after p5.js, set <code>AnalogStyle</code>, create controls in <code>setup()</code>, and call <code>.draw()</code> in <code>draw()</code>. Mouse, wheel, and touch events are wired automatically — no event handlers needed.</p>
+    <p class="desc">Load both script files after p5.js, set <code>ControlStyle</code>, create controls in <code>setup()</code>, and call <code>.draw()</code> in <code>draw()</code>. Mouse, wheel, and touch events are wired automatically — no event handlers needed.</p>
 
     <h3>HTML setup</h3>
     <pre><code><span class="kw">&lt;script</span> src=<span class="str">"p5.min.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
-<span class="kw">&lt;script</span> src=<span class="str">"AnalogControls.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
+<span class="kw">&lt;script</span> src=<span class="str">"ProControls.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
 <span class="kw">&lt;script</span> src=<span class="str">"CustomControls.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
 <span class="kw">&lt;script</span> src=<span class="str">"sketch.js"</span><span class="kw">&gt;&lt;/script&gt;</span></code></pre>
 
     <h3>Minimal sketch</h3>
-    <pre><code><span class="prop">AnalogStyle</span> = <span class="str">'black'</span>;  <span class="cmt">// set before creating controls</span>
+    <pre><code><span class="prop">ControlStyle</span> = <span class="str">'black'</span>;  <span class="cmt">// set before creating controls</span>
 
 <span class="kw">let</span> vol, pan, pwr;
 
@@ -577,17 +576,17 @@
 }
 
 <span class="kw">function</span> <span class="fn">draw</span>() {
-  <span class="fn">analogBackground</span>();  <span class="cmt">// style-matched background</span>
+  <span class="fn">proControlBackground</span>();  <span class="cmt">// style-matched background</span>
   <span class="cmt">// Controls render themselves — no draw loop needed.</span>
 }
 
 <span class="cmt">// No event handlers. No draw loop. Controls self-register and self-draw.</span></code></pre>
 
     <h3>Rebuilding controls at runtime</h3>
-    <p class="desc">When recreating all controls (e.g. on a style switch), call <code>analogReset()</code> first to clear stale registrations. Read current values before rebuilding to preserve them.</p>
+    <p class="desc">When recreating all controls (e.g. on a style switch), call <code>proControlReset()</code> first to clear stale registrations. Read current values before rebuilding to preserve them.</p>
     <pre><code><span class="kw">function</span> <span class="fn">buildControls</span>() {
-  <span class="fn">analogReset</span>();              <span class="cmt">// clear old registrations</span>
-  AnalogStyle = currentStyle;
+  <span class="fn">proControlReset</span>();              <span class="cmt">// clear old registrations</span>
+  ControlStyle = currentStyle;
   mySlider = <span class="kw">new</span> <span class="fn">AnalogSlider</span>({ value: mySlider?.value ?? <span class="num">0.5</span> });
 }</code></pre>
 
@@ -595,7 +594,7 @@
     <pre><code>mySlider.<span class="fn">remove</span>(); <span class="cmt">// deregisters from events; stop calling .draw() to remove visually</span></code></pre>
 
     <h3>Common options (all controls)</h3>
-    <p class="desc">Every control inherits these from the <code>AnalogControl</code> base class.</p>
+    <p class="desc">Every control inherits these from the <code>ProControl</code> base class.</p>
     <table class="opts">
       <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
       <tbody>
@@ -1527,7 +1526,7 @@ const loop = new IconButton({
   <!-- Panel -->
   <section id="panel">
     <h2>Panel <span class="tag ext">Container</span></h2>
-    <p class="desc">A clipping container that groups AnalogControls into a positioned, optionally scrollable surface. Controls added with <code>.add()</code> are positioned relative to the panel's top-left corner — a slider at <code>(10, 10)</code> appears 10px from the panel edge, not the canvas edge. When child controls extend beyond the panel bounds, thin scrollbars appear automatically; the scroll wheel pans the view when no child control is hovered.</p>
+    <p class="desc">A clipping container that groups ProControls into a positioned, optionally scrollable surface. Controls added with <code>.add()</code> are positioned relative to the panel's top-left corner — a slider at <code>(10, 10)</code> appears 10px from the panel edge, not the canvas edge. When child controls extend beyond the panel bounds, thin scrollbars appear automatically; the scroll wheel pans the view when no child control is hovered.</p>
 
     <h3>Constructor options</h3>
     <div class="table-wrap">
@@ -1552,7 +1551,7 @@ const loop = new IconButton({
       <table>
         <thead><tr><th>Name</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>.add(control)</code></td><td>Attach an AnalogControl to the panel. The control is removed from the global registry and managed by the panel from that point on. Returns <code>this</code> for chaining.</td></tr>
+          <tr><td><code>.add(control)</code></td><td>Attach an ProControl to the panel. The control is removed from the global registry and managed by the panel from that point on. Returns <code>this</code> for chaining.</td></tr>
           <tr><td><code>.visible</code></td><td>Get/set panel visibility. When set to <code>false</code> the panel and all children stop drawing and receiving events.</td></tr>
           <tr><td><code>.minimized</code></td><td>Get/set minimized state. When <code>true</code> the panel collapses to only the title bar; the small <strong>−/+</strong> button in the title bar also toggles this.</td></tr>
           <tr><td><code>.minimizable</code></td><td>Read/write. Hides the toggle button and disables collapse when <code>false</code>.</td></tr>
@@ -1974,9 +1973,9 @@ for (let i = 0; i &lt; 4; i++) {
   <!-- Themes -->
   <section id="themes">
     <h2>Themes &amp; Styles</h2>
-    <p class="desc">Set <code>AnalogStyle</code> before creating controls. The style is captured at construction time, so controls built before a change keep their original look.</p>
+    <p class="desc">Set <code>ControlStyle</code> before creating controls. The style is captured at construction time, so controls built before a change keep their original look.</p>
 
-    <pre><code>AnalogStyle = <span class="str">'brushed'</span>; <span class="cmt">// before any new controls</span></code></pre>
+    <pre><code>ControlStyle = <span class="str">'brushed'</span>; <span class="cmt">// before any new controls</span></code></pre>
 
     <h3>Built-in styles</h3>
     <div class="swatches">
@@ -2033,7 +2032,7 @@ for (let i = 0; i &lt; 4; i++) {
       <iframe class="example-frame" src="example.html?c=dialtheme&s=yellow&lbl=YLW" width="140" height="140" scrolling="no" frameborder="0" loading="lazy" title="yellow theme"></iframe>
     </div>
 
-    <h3>analogBackground()</h3>
+    <h3>proControlBackground()</h3>
     <p class="desc">Use instead of p5's <code>background()</code>. Fills the canvas with the style color. <code>'brushed'</code> and <code>'stainless'</code> also draw per-row texture overlays via the native Canvas 2D API.</p>
 
     <table class="opts" style="margin-top:10px">
@@ -2051,14 +2050,14 @@ for (let i = 0; i &lt; 4; i++) {
     </table>
 
     <h3>Runtime style switching</h3>
-    <p class="desc">Rebuild controls with <code>analogReset()</code> when switching styles. The <a href="demo.html" target="_blank">Live Demo</a> uses an <code>AnalogSwitch</code> to cycle all four styles.</p>
+    <p class="desc">Rebuild controls with <code>proControlReset()</code> when switching styles. The <a href="demo.html" target="_blank">Live Demo</a> uses an <code>AnalogSwitch</code> to cycle all four styles.</p>
     <pre><code><span class="kw">const</span> STYLES = [<span class="str">'black'</span>, <span class="str">'stainless'</span>, <span class="str">'white'</span>, <span class="str">'brushed'</span>, <span class="str">'dimpled'</span>, <span class="str">'red'</span>, <span class="str">'blue'</span>, <span class="str">'yellow'</span>];
 <span class="kw">const</span> LABELS = [<span class="str">'BLACK'</span>, <span class="str">'STEEL'</span>, <span class="str">'WHITE'</span>, <span class="str">'BRUSH'</span>, <span class="str">'DIMPL'</span>, <span class="str">'RED'</span>, <span class="str">'BLUE'</span>, <span class="str">'YLW'</span>];
 <span class="kw">let</span> currentStyle = <span class="str">'black'</span>;
 
 <span class="kw">function</span> <span class="fn">buildControls</span>() {
-  <span class="fn">analogReset</span>();
-  AnalogStyle = currentStyle;
+  <span class="fn">proControlReset</span>();
+  ControlStyle = currentStyle;
   mySlider    = <span class="kw">new</span> <span class="fn">AnalogSlider</span>({ value: mySlider?.value ?? <span class="num">0.5</span> });
   styleSwitch = <span class="kw">new</span> <span class="fn">AnalogSwitch</span>({
     states: LABELS,

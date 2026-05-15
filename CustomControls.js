@@ -1,4 +1,4 @@
-// CustomControls.js — example extensions (load after AnalogControls.js)
+// CustomControls.js — example extensions (load after ProControls.js)
 
 // ─── Shared utility ──────────────────────────────────────────────────────────
 // Draw a raised-bevel panel around a group of controls (used by Multi- classes).
@@ -195,10 +195,10 @@ class VUMeter extends AnalogSlider {
 }
 
 // ─── XYPad ───────────────────────────────────────────────────────────────────
-// Extends AnalogControl directly — no fader involved.
+// Extends ProControl directly — no fader involved.
 // Exposes valueX / valueY and fires onChangeX / onChangeY.
 
-class XYPad extends AnalogControl {
+class XYPad extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.width  = opts.width  ?? 160;
@@ -459,7 +459,7 @@ const _LED_SEGS = {
   ' ': [0, 0, 0, 0, 0, 0, 0],
 };
 
-class LEDMeter extends AnalogControl {
+class LEDMeter extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.digits    = opts.digits    ?? 5;
@@ -609,7 +609,7 @@ class LEDMeter extends AnalogControl {
 // Attack / Decay / Release are relative time values; Sustain is amplitude 0–1.
 // Set any property at any time; the graph redraws each frame automatically.
 
-class ADSRDisplay extends AnalogControl {
+class ADSRDisplay extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.attack        = opts.attack        ?? 0.1;
@@ -724,7 +724,7 @@ class ADSRDisplay extends AnalogControl {
 // as you scroll. Only the selected option is fully visible at rest; adjacent
 // options peek in at the drum edges during a drag.
 
-class Selector extends AnalogControl {
+class Selector extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.options       = opts.options       ?? ['A', 'B', 'C'];
@@ -1262,7 +1262,7 @@ window.Selector       = Selector;
 // Both callbacks receive the same shape as `sliders` with current values:
 //   onChange: v => console.log(v)  // { kick: 0.9, snare: 0.7, bass: 0.8 }
 
-class MultiSlider extends AnalogControl {
+class MultiSlider extends ProControl {
   constructor(opts = {}) {
     super({ x: opts.x, y: opts.y, label: opts.label ?? '', theme: opts.theme });
 
@@ -1312,7 +1312,7 @@ class MultiSlider extends AnalogControl {
         onChange:  () => { if (this.onChange)  this.onChange(this._values()); },
         onRelease: () => { if (this.onRelease) this.onRelease(this._values()); },
       });
-      // Children stay in _analogRegistry — they handle their own events
+      // Children stay in _proControlRegistry — they handle their own events
       // independently, just like standalone sliders.
       this._children.push(s);
       if (this.horizontal) {
@@ -1390,7 +1390,7 @@ window.MultiSlider = MultiSlider;
 //
 // Both callbacks receive a name→value object: { freq: 440, q: 0.7, gain: 0 }
 
-class MultiDial extends AnalogControl {
+class MultiDial extends ProControl {
   constructor(opts = {}) {
     super({ x: opts.x, y: opts.y, label: opts.label ?? '', theme: opts.theme });
 
@@ -1438,7 +1438,7 @@ class MultiDial extends AnalogControl {
         onChange:  () => { if (this.onChange)  this.onChange(this._values()); },
         onRelease: () => { if (this.onRelease) this.onRelease(this._values()); },
       });
-      // Children stay in _analogRegistry — they handle their own events.
+      // Children stay in _proControlRegistry — they handle their own events.
       this._children.push(d);
       if (this.horizontal) {
         curX += d.size + gap;
@@ -1521,7 +1521,7 @@ window.MultiDial = MultiDial;
 //   rate              percent change per frame while held (default 0.02)
 //   onChange(values)  fires on any cell change
 
-class GridPad extends AnalogControl {
+class GridPad extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.rows     = opts.rows     ?? 4;
@@ -1834,7 +1834,7 @@ window.GridPad = GridPad;
 // onChange(selectedArray, addedWord, removedWord) — one of the last two args
 // is always non-null during a toggle; both null on a label double-click reset.
 
-class TagSelector extends AnalogControl {
+class TagSelector extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.words     = opts.words    ?? [];
@@ -2110,7 +2110,7 @@ window.TagSelector = TagSelector;
 // opts: x, y, options[], state (index), width, height, label,
 //       onChange(index, value), onRelease(index, value), theme
 
-class SliderSelector extends AnalogControl {
+class SliderSelector extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
     this.options  = opts.options ?? [];
@@ -2328,7 +2328,7 @@ window.SliderSelector = SliderSelector;
 //       readout ('raw'|'percent'|'db'), decimals, horizontal,
 //       showScale, showFader, onChange(low,high), onRelease(low,high), theme
 
-class RangeSlider extends AnalogControl {
+class RangeSlider extends ProControl {
   constructor(opts = {}) {
     super(opts);
 
@@ -2661,11 +2661,11 @@ class RangeSlider extends AnalogControl {
 window.RangeSlider = RangeSlider;
 
 // ─── Panel ───────────────────────────────────────────────────────────────────
-// Container that hosts AnalogControls positioned relative to the panel's
+// Container that hosts ProControls positioned relative to the panel's
 // top-left. Use .add(control) to attach controls.  Clips content, draws
 // scrollbars when children extend beyond the panel bounds.
 
-class Panel extends AnalogControl {
+class Panel extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
     this.width      = opts.width  ?? 300;
@@ -2994,7 +2994,7 @@ window.Panel = Panel;
 // opts: x, y, message, buttons[], label, width, movable,
 //       onButton(index, label), theme
 
-class MessageDialog extends AnalogControl {
+class MessageDialog extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
     this.message  = opts.message  ?? '';
@@ -3182,7 +3182,7 @@ window.MessageDialog = MessageDialog;
 // opts: x, y, message, buttons[], label, inputValue, inputPlaceholder, width,
 //       movable, onButton(index, label), onSubmit(value), theme
 
-class InputDialog extends AnalogControl {
+class InputDialog extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
     this.message          = opts.message          ?? '';
@@ -3498,7 +3498,7 @@ window.InputDialog = InputDialog;
 // opts: x, y, icon (ligature string), size, label (inside button below icon),
 //       toggle, state, iconSize, onClick(state?), disabled, theme
 
-class IconButton extends AnalogControl {
+class IconButton extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.icon    = opts.icon    ?? 'star';
@@ -3653,7 +3653,7 @@ window.IconButton = IconButton;
 //   the submenu items.
 // opts: x, y, orientation ('top'|'bottom'|'left'|'right'), items, width, onChange
 
-class Menu extends AnalogControl {
+class Menu extends ProControl {
   constructor(opts = {}) {
     super(opts);
     this.items       = opts.items       ?? [];

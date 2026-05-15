@@ -1,4 +1,4 @@
-// sketch.js — demo for AnalogControls
+// sketch.js — demo for ProControls
 
 let gainSlider, masterSlider, vuMeter, xyPad, gainDial, vuDial, ledMeter, styleSwitch, effectSelector, multiSlider, multiDial;
 let rubberDial, groovedDial, pointerDial;
@@ -16,8 +16,8 @@ const LABELS  = ['BLACK', 'STEEL', 'WHITE', 'BRUSH', 'DIMPL', 'RED', 'BLUE', 'YL
 let   currentStyle = 'stainless';
 
 function buildControls() {
-  analogReset();  // clear stale registrations before rebuilding
-  AnalogStyle = currentStyle;
+  proControlReset();  // clear stale registrations before rebuilding
+  ControlStyle = currentStyle;
 
   gainSlider = new AnalogSlider({
     x: 20, y: 50,
@@ -280,7 +280,7 @@ function setup() {
 }
 
 function draw() {
-  analogBackground();
+  proControlBackground();
 
   // Simulate VU level driven by master fader, modulated by slow Perlin noise
   _noiseT += 0.002;
@@ -294,4 +294,4 @@ function draw() {
   // No draw loop needed — controls render themselves automatically.
 }
 
-// No event wiring or draw loop needed — AnalogControls.js handles it all.
+// No event wiring or draw loop needed — ProControls.js handles it all.

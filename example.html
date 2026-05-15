@@ -11,7 +11,7 @@
 <body>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=block" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
-<script src="AnalogControls.js"></script>
+<script src="ProControls.js"></script>
 <script src="CustomControls.js"></script>
 <script>
 const _q    = new URLSearchParams(location.search);
@@ -68,23 +68,23 @@ let _lvl  = 0;
 
 function runCode(code) {
   if (_inst) { _inst.remove(); _inst = null; }
-  analogFullReset();
+  proControlFullReset();
   _lvl = 0;
 
   window.setup = function () {
     createCanvas(W, H);
-    AnalogStyle = STYLE;
+    ControlStyle = STYLE;
     try { (new Function(code))(); }
     catch (e) { console.warn('[example]', e.message); }
   };
 
   window.draw = function () {
-    analogBackground();
+    proControlBackground();
     // Drive animated display meters before they auto-draw this frame
     _lvl = lerp(_lvl, 0.5 + 0.4 * sin(frameCount * 0.035), 0.1);
     _lvl += random(-0.025, 0.025);
     _lvl = constrain(_lvl, 0, 1);
-    for (const c of analogControls()) {
+    for (const c of proControls()) {
       const n = c.constructor.name;
       if (n === 'VUMeter' || n === 'VUDial' || n === 'LEDMeter') c.value = _lvl;
     }
@@ -95,7 +95,7 @@ function runCode(code) {
 }
 
 // Default code per control type — must assign to any variable; the library
-// self-registers each control so the draw loop finds it via analogControls().
+// self-registers each control so the draw loop finds it via proControls().
 const label = LBL ? `'${LBL}'` : null;
 
 const DEFAULTS = {
