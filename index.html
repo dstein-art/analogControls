@@ -207,6 +207,88 @@
       transition: background .15s;
     }
     .chip-demo:hover { background: #0077cc44; }
+
+    /* ── Components grid ── */
+    .components {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 64px 32px 80px;
+    }
+
+    .section-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: #0077cc12;
+      border: 1px solid #0077cc33;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+    }
+    .section-tag.ext {
+      color: var(--accent2);
+      background: #cc550012;
+      border-color: #cc550033;
+    }
+
+    .col-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .col-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .col-card-header {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .col-card-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .col-card-header p {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .col-card-preview {
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 12px;
+      flex: 1;
+    }
+
+    .col-card-footer {
+      padding: 8px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .col-card-footer a {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .col-card-footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -289,6 +371,270 @@
       <span class="chip">p5.js 1.9+</span>
       <a href="demo.html" class="chip chip-demo" target="_blank">↗ Live Demo</a>
     </div>
+  </div>
+</div>
+
+<!-- ── Components ── -->
+<div class="components">
+  <span class="section-tag">Input</span>
+  <div class="col-grid">
+
+    <!-- AnalogSlider -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>AnalogSlider</h3>
+        <p>Vertical or horizontal fader with dB, raw, or percent readout. Supports spring-back and multiple visual styles.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=slider&s=stainless" width="100" height="265" scrolling="no" frameborder="0" loading="lazy" title="AnalogSlider example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#slider">Docs →</a></div>
+    </div>
+
+    <!-- MultiSlider -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>MultiSlider</h3>
+        <p>Bank of faders in one unit — ideal for EQ strips or mixer channels. Fires a single onChange with all values.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=multislider_styles&s=black" width="220" height="215" scrolling="no" frameborder="0" loading="lazy" title="MultiSlider example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#multislider">Docs →</a></div>
+    </div>
+
+    <!-- RangeSlider -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>RangeSlider</h3>
+        <p>Dual-handle slider for selecting a low/high range. Works vertically or horizontally.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=rangeslider&s=brushed" width="110" height="265" scrolling="no" frameborder="0" loading="lazy" title="RangeSlider example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#rangeslider">Docs →</a></div>
+    </div>
+
+    <!-- Dial -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>Dial</h3>
+        <p>Rotary knob with four visual styles — default, rubber, grooved, and pointer. Drag or scroll to adjust.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=dial&s=white" width="170" height="170" scrolling="no" frameborder="0" loading="lazy" title="Dial example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#dial">Docs →</a></div>
+    </div>
+
+    <!-- MultiDial -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>MultiDial</h3>
+        <p>Bank of rotary knobs in horizontal or vertical layout. Single onChange fires with all values.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=multidial&s=blue" width="280" height="150" scrolling="no" frameborder="0" loading="lazy" title="MultiDial example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#dial">Docs →</a></div>
+    </div>
+
+    <!-- XYPad -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>XYPad</h3>
+        <p>Two-axis touch pad with independent X and Y ranges. Optional spring-back to center on release.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=xypad&s=red" width="260" height="260" scrolling="no" frameborder="0" loading="lazy" title="XYPad example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#xypad">Docs →</a></div>
+    </div>
+
+    <!-- GridPad -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>GridPad</h3>
+        <p>Grid of cells with toggle, percent, or color-select modes. Supports grouping for step-sequencer layouts.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=gridpad_toggle&s=stainless" width="160" height="155" scrolling="no" frameborder="0" loading="lazy" title="GridPad example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#gridpad">Docs →</a></div>
+    </div>
+
+    <!-- Switch -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>Switch</h3>
+        <p>Multi-state toggle — binary on/off or n-state selector. Fires onChange with the new state index and label.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=switchn&s=brushed" width="130" height="175" scrolling="no" frameborder="0" loading="lazy" title="Switch example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#switch">Docs →</a></div>
+    </div>
+
+    <!-- IconButton -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>IconButton</h3>
+        <p>Material icon button in momentary or toggle mode. Uses any Material Symbols icon name.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=iconButton&s=black" width="220" height="180" scrolling="no" frameborder="0" loading="lazy" title="IconButton example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#iconButton">Docs →</a></div>
+    </div>
+
+    <!-- Selector -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>Selector</h3>
+        <p>Option picker in row or arrow-dropdown style. Click to cycle or jump directly to any option.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=selector&s=white" width="220" height="100" scrolling="no" frameborder="0" loading="lazy" title="Selector example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#selector">Docs →</a></div>
+    </div>
+
+    <!-- TagSelector -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>TagSelector</h3>
+        <p>Multi-select word-cloud picker. Toggle individual tags on or off; onChange reports the full selection set.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=tagSelector&s=blue" width="260" height="130" scrolling="no" frameborder="0" loading="lazy" title="TagSelector example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#tagSelector">Docs →</a></div>
+    </div>
+
+    <!-- SliderSelector -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>SliderSelector</h3>
+        <p>Slide-to-select strip — drag or snap through a list of labeled options.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=sliderSelector&s=yellow" width="260" height="160" scrolling="no" frameborder="0" loading="lazy" title="SliderSelector example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#sliderSelector">Docs →</a></div>
+    </div>
+
+    <!-- Menu -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>Menu</h3>
+        <p>Menubar or popup with nested submenus. Anchors to any edge or floats as a context menu.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=menu_left&s=stainless" width="200" height="240" scrolling="no" frameborder="0" loading="lazy" title="Menu example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#menu">Docs →</a></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Containers ── -->
+<div class="components" style="padding-top:0">
+  <span class="section-tag ext">Container</span>
+  <div class="col-grid">
+
+    <!-- Panel -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>Panel</h3>
+        <p>Draggable, scrollable container for grouping controls. Add any control with <code style="font-size:11px">pnl.add()</code>.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=panel&s=black" width="320" height="240" scrolling="no" frameborder="0" loading="lazy" title="Panel example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#panel">Docs →</a></div>
+    </div>
+
+    <!-- MessageDialog -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>MessageDialog</h3>
+        <p>Modal dialog with a message and configurable button row. Fires onButton with the index and label clicked.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=messageDialog&s=stainless" width="290" height="175" scrolling="no" frameborder="0" loading="lazy" title="MessageDialog example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#messageDialog">Docs →</a></div>
+    </div>
+
+    <!-- InputDialog -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>InputDialog</h3>
+        <p>Modal dialog with a text input field. Fires onSubmit with the entered value and onButton per button click.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=inputDialog&s=white" width="290" height="195" scrolling="no" frameborder="0" loading="lazy" title="InputDialog example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#inputDialog">Docs →</a></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Displays ── -->
+<div class="components" style="padding-top:0">
+  <span class="section-tag ext">Display</span>
+  <div class="col-grid">
+
+    <!-- VUMeter -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>VUMeter</h3>
+        <p>Segmented LED-style level meter. Optional fader overlay. Set <code style="font-size:11px">.value</code> each frame to animate.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=vumeter&s=black" width="90" height="265" scrolling="no" frameborder="0" loading="lazy" title="VUMeter example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#vumeter">Docs →</a></div>
+    </div>
+
+    <!-- VUDial -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>VUDial</h3>
+        <p>Arc-style level meter with optional knob overlay. Driven by setting <code style="font-size:11px">.value</code> each frame.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=vudial&s=blue" width="165" height="165" scrolling="no" frameborder="0" loading="lazy" title="VUDial example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#vudial">Docs →</a></div>
+    </div>
+
+    <!-- LEDMeter -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>LEDMeter</h3>
+        <p>Horizontal numeric LED display with configurable digit count, color, and dB or raw readout modes.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=ledmeter&s=brushed" width="200" height="110" scrolling="no" frameborder="0" loading="lazy" title="LEDMeter example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#ledmeter">Docs →</a></div>
+    </div>
+
+    <!-- ADSRDisplay -->
+    <div class="col-card">
+      <div class="col-card-header">
+        <h3>ADSRDisplay</h3>
+        <p>Visual envelope display with draggable attack, decay, sustain, and release handles.</p>
+      </div>
+      <div class="col-card-preview">
+        <iframe src="example.html?c=adsr&s=stainless" width="260" height="160" scrolling="no" frameborder="0" loading="lazy" title="ADSRDisplay example"></iframe>
+      </div>
+      <div class="col-card-footer"><a href="help.html#adsr">Docs →</a></div>
+    </div>
+
   </div>
 </div>
 

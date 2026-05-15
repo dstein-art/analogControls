@@ -34,6 +34,7 @@ const SIZES = {
   multislider:   [350, 265],
   multislider_h: [220, 230],
   multislider_h_spring: [220, 230],
+  multislider_styles:   [220, 215],
   xypad_spring:  [260, 260],
   multidial:     [280, 150],
   multidial_v:   [150, 340],
@@ -253,6 +254,22 @@ const eq = new MultiSlider({
     '250Hz': 0,
     '2kHz':  0,
     '8kHz':  0,
+  },
+  onChange: v => console.log(v),
+});`,
+
+  multislider_styles: `\
+const mix = new MultiSlider({
+  x: 20, y: 20,
+  width: 180, height: 44,
+  horizontal: true,
+  min: 0, max: 1,
+  readout: 'raw', decimals: 2,
+  label: 'STYLES',
+  sliders: {
+    'LEVEL': { value: 0.75, style: 'knob'   },
+    'PITCH': { value: 0.5,  style: 'wheel', springBack: true },
+    'SEND':  { value: 0.3,  style: 'button' },
   },
   onChange: v => console.log(v),
 });`,
