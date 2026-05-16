@@ -1941,21 +1941,13 @@ class XYPad extends ProControl {
   get valueX() { return this._valueX; }
   set valueX(v) {
     this._valueX = Math.min(Math.max(v, this.minX), this.maxX);
-    if (v < this.minX || v > this.maxX) {
-      if (this.springBack) this._startSpring();
-    } else {
-      this._cancelSpring();
-    }
+    this._startSpring();
   }
 
   get valueY() { return this._valueY; }
   set valueY(v) {
     this._valueY = Math.min(Math.max(v, this.minY), this.maxY);
-    if (v < this.minY || v > this.maxY) {
-      if (this.springBack) this._startSpring();
-    } else {
-      this._cancelSpring();
-    }
+    this._startSpring();
   }
 
   _normX() {
@@ -2027,11 +2019,11 @@ class XYPad extends ProControl {
     if (this._containsPoint(mouseX, mouseY)) {
       if (this._isDoubleClick()) {
         this._cancelSpring();
-        this.valueX = this._springDefaultX;
-        this.valueY = this._springDefaultY;
-        if (this.onChangeX) this.onChangeX(this.valueX);
-        if (this.onChangeY) this.onChangeY(this.valueY);
-        if (this.onChange) this.onChange(this.valueX, this.valueY);
+        this._valueX = this._springDefaultX;
+        this._valueY = this._springDefaultY;
+        if (this.onChangeX) this.onChangeX(this._valueX);
+        if (this.onChangeY) this.onChangeY(this._valueY);
+        if (this.onChange) this.onChange(this._valueX, this._valueY);
         return;
       }
       this._cancelSpring();
@@ -2081,18 +2073,18 @@ class XYPad extends ProControl {
   _updateXY(mx, my) {
     const nx = constrain((mx - this._innerX()) / this._innerW(), 0, 1);
     const ny = constrain(1 - (my - this._innerY()) / this._innerH(), 0, 1);
-    const prevX = this.valueX;
-    const prevY = this.valueY;
-    this.valueX = this.scaleX === 'log'
+    const prevX = this._valueX;
+    const prevY = this._valueY;
+    this._valueX = this.scaleX === 'log'
       ? this.minX * Math.pow(this.maxX / this.minX, nx)
       : this.minX + nx * (this.maxX - this.minX);
-    this.valueY = this.scaleY === 'log'
+    this._valueY = this.scaleY === 'log'
       ? this.minY * Math.pow(this.maxY / this.minY, ny)
       : this.minY + ny * (this.maxY - this.minY);
-    if (this.valueX !== prevX && this.onChangeX) this.onChangeX(this.valueX);
-    if (this.valueY !== prevY && this.onChangeY) this.onChangeY(this.valueY);
-    if ((this.valueX !== prevX || this.valueY !== prevY) && this.onChange)
-      this.onChange(this.valueX, this.valueY);
+    if (this._valueX !== prevX && this.onChangeX) this.onChangeX(this._valueX);
+    if (this._valueY !== prevY && this.onChangeY) this.onChangeY(this._valueY);
+    if ((this._valueX !== prevX || this._valueY !== prevY) && this.onChange)
+      this.onChange(this._valueX, this._valueY);
   }
 }
 
