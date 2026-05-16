@@ -5757,6 +5757,7 @@ class Markup extends ProControl {
     this._contentH   = 0;
     this._hovered    = false;
     this._blocks     = [];
+    this._links      = [];   // [{x,y,w,h,href}] rebuilt each draw frame
     this.text        = opts.text ?? '';   // setter parses immediately
   }
 
@@ -5834,9 +5835,12 @@ class Markup extends ProControl {
       // Italic (two quotes)
       if ((m = s.match(/^'{2}(.*?)'{2}([\s\S]*)$/)))
         { toks.push({ text: m[1], italic: true }); s = m[2]; continue; }
-      // Wiki link: [[url|label]] or [[label]]
-      if ((m = s.match(/^\[\[(?:[^\]|]*\|)?([^\]]*)\]\]([\s\S]*)$/)))
-        { toks.push({ text: m[1], link: true }); s = m[2]; continue; }
+      // Wiki link: [[url|label]] captures url and label separately
+      if ((m = s.match(/^\[\[([^\]|]+)\|([^\]]*)\]\]([\s\S]*)$/)))
+        { toks.push({ text: m[2], link: true, href: m[1] }); s = m[3]; continue; }
+      // [[label]] — label doubles as the href
+      if ((m = s.match(/^\[\[([^\]]*)\]\]([\s\S]*)$/)))
+        { toks.push({ text: m[1], link: true, href: m[1] }); s = m[2]; continue; }
       // Plain text up to next markup marker
       const n = s.search(/'{2}|\[\[/);
       if (n > 0) { toks.push({ text: s.slice(0, n) }); s = s.slice(n); }
@@ -5889,6 +5893,8 @@ class Markup extends ProControl {
     const acc = this.theme.capIndicator;
     const maxW = pw - pad * 2;
 
+    this._links = [];
+
     gc.save();
     gc.beginPath();
     gc.rect(x + 1, y + 1, pw - 2, ph - 2);
@@ -5923,8 +5929,12 @@ class Markup extends ProControl {
           if (cy + slh > y + pad && cy < y + ph) {
             for (const seg of lines[li]) {
               gc.font = this._font(true, seg.italic, sz);
-              gc.fillStyle = txt;
+              gc.fillStyle = seg.link ? acc : txt;
               gc.fillText(seg.text, x + pad + seg.x, cy);
+              if (seg.link && seg.href) {
+                this._links.push({ x: x + pad + seg.x, y: cy, w: seg.w, h: slh, href: seg.href });
+                gc.fillRect(x + pad + seg.x, cy + sz - 1, seg.w, 1);
+              }
             }
             if (b.type === 'h1' && li === lines.length - 1) {
               gc.save();
@@ -5957,6 +5967,10 @@ class Markup extends ProControl {
               gc.font = this._font(seg.bold, seg.italic, fs);
               gc.fillStyle = seg.link ? acc : txt;
               gc.fillText(seg.text, textX + seg.x, cy);
+              if (seg.link && seg.href) {
+                this._links.push({ x: textX + seg.x, y: cy, w: seg.w, h: lh, href: seg.href });
+                gc.fillRect(textX + seg.x, cy + fs - 1, seg.w, 1);
+              }
             }
           }
           cy += lh;
@@ -5982,6 +5996,10 @@ class Markup extends ProControl {
               gc.font = this._font(seg.bold, seg.italic, fs);
               gc.fillStyle = seg.link ? acc : txt;
               gc.fillText(seg.text, textX + seg.x, cy);
+              if (seg.link && seg.href) {
+                this._links.push({ x: textX + seg.x, y: cy, w: seg.w, h: lh, href: seg.href });
+                gc.fillRect(textX + seg.x, cy + fs - 1, seg.w, 1);
+              }
             }
           }
           cy += lh;
@@ -6002,6 +6020,10 @@ class Markup extends ProControl {
               gc.font = this._font(seg.bold, seg.italic, fs);
               gc.fillStyle = seg.link ? acc : dim;
               gc.fillText(seg.text, textX + seg.x, cy);
+              if (seg.link && seg.href) {
+                this._links.push({ x: textX + seg.x, y: cy, w: seg.w, h: lh, href: seg.href });
+                gc.fillRect(textX + seg.x, cy + fs - 1, seg.w, 1);
+              }
             }
             gc.restore();
           }
@@ -6018,6 +6040,10 @@ class Markup extends ProControl {
             gc.font = this._font(seg.bold, seg.italic, fs);
             gc.fillStyle = seg.link ? acc : txt;
             gc.fillText(seg.text, x + pad + seg.x, cy);
+            if (seg.link && seg.href) {
+              this._links.push({ x: x + pad + seg.x, y: cy, w: seg.w, h: lh, href: seg.href });
+              gc.fillRect(x + pad + seg.x, cy + fs - 1, seg.w, 1);
+            }
           }
         }
         cy += lh;
@@ -6051,6 +6077,16 @@ class Markup extends ProControl {
   mouseMoved() {
     this._hovered = mouseX >= this.x && mouseX <= this.x + this.width &&
                     mouseY >= this.y && mouseY <= this.y + this.height;
+  }
+
+  mousePressed() {
+    for (const lnk of this._links) {
+      if (mouseX >= lnk.x && mouseX <= lnk.x + lnk.w &&
+          mouseY >= lnk.y && mouseY <= lnk.y + lnk.h) {
+        window.open(lnk.href, '_blank', 'noopener');
+        return;
+      }
+    }
   }
 
   mouseWheel(e) {
