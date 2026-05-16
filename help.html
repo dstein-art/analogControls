@@ -610,7 +610,7 @@
 
     <h3>HTML setup</h3>
     <pre><code><span class="kw">&lt;script</span> src=<span class="str">"p5.min.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
-<span class="kw">&lt;script</span> src=<span class="str">"ProControls.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
+<span class="kw">&lt;script</span> src=<span class="str">"https://cdn.jsdelivr.net/gh/dstein-art/proControls4p5js@master/ProControls.js"</span><span class="kw">&gt;&lt;/script&gt;</span>
 <span class="kw">&lt;script</span> src=<span class="str">"sketch.js"</span><span class="kw">&gt;&lt;/script&gt;</span></code></pre>
 
     <h3>Minimal sketch</h3>
@@ -1078,7 +1078,7 @@
         <tr><td>height</td><td>number</td><td>160</td><td>Panel height in pixels.</td></tr>
         <tr><td>minX / maxX</td><td>number</td><td>0 / 1</td><td>Value range for the horizontal axis.</td></tr>
         <tr><td>minY / maxY</td><td>number</td><td>0 / 1</td><td>Value range for the vertical axis.</td></tr>
-        <tr><td>valueX / valueY</td><td>number</td><td>center</td><td>Initial position.</td></tr>
+        <tr><td>valueX / valueY</td><td>number</td><td>center</td><td>Current X and Y position within the pad's range. Read or set at any time to get or move the crosshair programmatically.</td></tr>
         <tr><td>scaleX</td><td>string</td><td>'linear'</td><td><code>'linear'</code> or <code>'log'</code>. Log requires <code>minX &gt; 0</code>.</td></tr>
         <tr><td>scaleY</td><td>string</td><td>'linear'</td><td><code>'linear'</code> or <code>'log'</code>. Log requires <code>minY &gt; 0</code>.</td></tr>
         <tr><td>crosshairColor</td><td>string</td><td>theme accent</td><td>Color of the crosshair dot and lines.</td></tr>
