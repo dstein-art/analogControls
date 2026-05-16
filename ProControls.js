@@ -5589,21 +5589,12 @@ class Menu extends ProControl {
     const barW  = this.width;
     const barH  = horiz ? this._barH : this.height;
 
-    // ── Bar background with bevel gradient ───────────────────────────────
+    // ── Bar background ────────────────────────────────────────────────────
     gc.save();
     gc.beginPath();
     if (gc.roundRect) gc.roundRect(bx, by, barW, barH, 3); else gc.rect(bx, by, barW, barH);
     gc.clip();
     gc.fillStyle = theme.capBody;
-    gc.fillRect(bx, by, barW, barH);
-    // Gradient runs top→bottom for horiz bars, left→right for vertical bars
-    const grad = horiz
-      ? gc.createLinearGradient(bx, by, bx, by + this._barH)
-      : gc.createLinearGradient(bx, by, bx + this._barH, by);
-    grad.addColorStop(0,   'rgba(255,255,255,0.22)');
-    grad.addColorStop(0.4, 'rgba(255,255,255,0.06)');
-    grad.addColorStop(1,   'rgba(0,0,0,0.18)');
-    gc.fillStyle = grad;
     gc.fillRect(bx, by, barW, barH);
     gc.restore();
 
