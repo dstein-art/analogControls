@@ -5758,6 +5758,7 @@ class Markup extends ProControl {
     this._hovered    = false;
     this._blocks     = [];
     this._links        = [];   // [{x,y,w,h,href}] rebuilt each draw frame
+    this._popupHref    = null; // href shown in the URL popup, null = hidden
     this._clickHandler = null;
     this._clickCanvas  = null;
     this.text          = opts.text ?? '';   // setter parses immediately
@@ -6072,6 +6073,44 @@ class Markup extends ProControl {
       pop();
     }
 
+    // URL popup shown when a link is clicked
+    if (this._popupHref) {
+      const popPad = 6;
+      const popH   = 22;
+      const popY   = y + ph - popH - 4;
+      const arrow  = '↗ ';   // ↗
+
+      gc.save();
+      gc.font = `11px ${this.theme.font ?? 'monospace, sans-serif'}`;
+      const arrowW = gc.measureText(arrow).width;
+
+      // Truncate URL to fit within panel width minus padding
+      const maxUrlW = pw - pad * 2 - arrowW - popPad * 2;
+      let url = this._popupHref;
+      while (url.length > 1 && gc.measureText(url).width > maxUrlW)
+        url = url.slice(0, -1);
+      if (url !== this._popupHref) url = url.slice(0, -1) + '…';
+
+      const boxW = Math.min(arrowW + gc.measureText(url).width + popPad * 2, pw - pad * 2);
+      const popX = x + pad;
+
+      // Background
+      gc.fillStyle = this.theme.tooltipBg;
+      gc.beginPath();
+      if (gc.roundRect) gc.roundRect(popX, popY, boxW, popH, 3);
+      else gc.rect(popX, popY, boxW, popH);
+      gc.fill();
+
+      // Arrow icon in accent colour + URL in tooltip colour
+      gc.textBaseline = 'middle';
+      gc.textAlign    = 'left';
+      gc.fillStyle    = acc;
+      gc.fillText(arrow, popX + popPad, popY + popH / 2);
+      gc.fillStyle    = this.theme.tooltip;
+      gc.fillText(url, popX + popPad + arrowW, popY + popH / 2);
+      gc.restore();
+    }
+
     if (this.disabled) this._drawDisabled(x, y, pw, ph);
   }
 
@@ -6080,6 +6119,18 @@ class Markup extends ProControl {
   mouseMoved() {
     this._hovered = mouseX >= this.x && mouseX <= this.x + this.width &&
                     mouseY >= this.y && mouseY <= this.y + this.height;
+  }
+
+  mousePressed() {
+    if (!this._hovered) { this._popupHref = null; return; }
+    for (const lnk of this._links) {
+      if (mouseX >= lnk.x && mouseX <= lnk.x + lnk.w &&
+          mouseY >= lnk.y && mouseY <= lnk.y + lnk.h) {
+        this._popupHref = lnk.href;
+        return;
+      }
+    }
+    this._popupHref = null;   // click outside any link → dismiss
   }
 
   // window.open() requires a trusted user-gesture event (not rAF / the pre-hook).
