@@ -1100,6 +1100,7 @@ class AnalogSlider extends ProControl {
         this._cancelSpring();
         this.value = this._springDefault;
         if (this.onChange) this.onChange(this.value);
+        if (this.onRelease) this.onRelease(this.value);
         return;
       }
       this._cancelSpring();
@@ -1470,6 +1471,7 @@ class Dial extends ProControl {
         this._cancelSpring();
         this.value = this._springDefault;
         if (this.onChange) this.onChange(this.value);
+        if (this.onRelease) this.onRelease(this.value);
         return;
       }
       this._cancelSpring();
@@ -1657,6 +1659,7 @@ class Switch extends ProControl {
         this._cancelSpring();
         this.state = this._springDefault;
         if (this.onChange) this.onChange(this.state, this.states[this.state]);
+        if (this.onRelease) this.onRelease(this.state, this.states[this.state]);
       }
       return;
     }
@@ -1664,6 +1667,7 @@ class Switch extends ProControl {
       this._cancelSpring();
       this.state = this._springDefault;
       if (this.onChange) this.onChange(this.state, this.states[this.state]);
+      if (this.onRelease) this.onRelease(this.state, this.states[this.state]);
       return;
     }
     this._cancelSpring();
@@ -2024,6 +2028,7 @@ class XYPad extends ProControl {
         if (this.onChangeX) this.onChangeX(this._valueX);
         if (this.onChangeY) this.onChangeY(this._valueY);
         if (this.onChange) this.onChange(this._valueX, this._valueY);
+        if (this.onRelease) this.onRelease(this._valueX, this._valueY);
         return;
       }
       this._cancelSpring();
@@ -2812,6 +2817,7 @@ class Selector extends ProControl {
     this._dragY       = null;
     this._active      = false;
     if (this.onChange) this.onChange(this.state, this.options[this.state]);
+    if (this.onRelease) this.onRelease(this.state, this.options[this.state]);
   }
 
   mousePressed() {
@@ -3479,6 +3485,7 @@ class GridPad extends ProControl {
       if (this.label && mouseY >= this.y + this._totalH() - 16 && this._isDoubleClick()) {
         this._vals = this._initVals.map(row => [...row]);
         if (this.onChange) this.onChange(this.values);
+        if (this.onRelease) this.onRelease(this.values);
       }
       return;
     }
@@ -3793,6 +3800,7 @@ class TagSelector extends ProControl {
       if (inLabel && this._isDoubleClick()) {
         this._selected = new Set(this._initSel);
         if (this.onChange) this.onChange(this.selected, null, null);
+        if (this.onRelease) this.onRelease(this.selected, null, null);
       }
     }
   }
@@ -4321,6 +4329,7 @@ class RangeSlider extends ProControl {
       if (cap === 'low') this.valueLow  = this._defaultLow;
       else               this.valueHigh = this._defaultHigh;
       if (this.onChange) this.onChange(this.valueLow, this.valueHigh);
+      if (this.onRelease) this.onRelease(this.valueLow, this.valueHigh);
       return;
     }
     this._dragging  = cap;
