@@ -1941,13 +1941,21 @@ class XYPad extends ProControl {
   get valueX() { return this._valueX; }
   set valueX(v) {
     this._valueX = Math.min(Math.max(v, this.minX), this.maxX);
-    if ((v < this.minX || v > this.maxX) && this.springBack) this._startSpring();
+    if (v < this.minX || v > this.maxX) {
+      if (this.springBack) this._startSpring();
+    } else {
+      this._cancelSpring();
+    }
   }
 
   get valueY() { return this._valueY; }
   set valueY(v) {
     this._valueY = Math.min(Math.max(v, this.minY), this.maxY);
-    if ((v < this.minY || v > this.maxY) && this.springBack) this._startSpring();
+    if (v < this.minY || v > this.maxY) {
+      if (this.springBack) this._startSpring();
+    } else {
+      this._cancelSpring();
+    }
   }
 
   _normX() {
@@ -2052,14 +2060,14 @@ class XYPad extends ProControl {
     if (!this._springActive) return;
     const t    = Math.min((millis() - this._springStartMs) / 1000 / this.springDuration, 1);
     const ease = 1 - Math.pow(1 - t, 3);
-    this.valueX = lerp(this._springFromX, this._springDefaultX, ease);
-    this.valueY = lerp(this._springFromY, this._springDefaultY, ease);
-    if (this.onChange)  this.onChange(this.valueX, this.valueY);
-    if (this.onChangeX) this.onChangeX(this.valueX);
-    if (this.onChangeY) this.onChangeY(this.valueY);
+    this._valueX = lerp(this._springFromX, this._springDefaultX, ease);
+    this._valueY = lerp(this._springFromY, this._springDefaultY, ease);
+    if (this.onChange)  this.onChange(this._valueX, this._valueY);
+    if (this.onChangeX) this.onChangeX(this._valueX);
+    if (this.onChangeY) this.onChangeY(this._valueY);
     if (t >= 1) {
-      this.valueX = this._springDefaultX;
-      this.valueY = this._springDefaultY;
+      this._valueX = this._springDefaultX;
+      this._valueY = this._springDefaultY;
       this._springActive = false;
     }
   }
