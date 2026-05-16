@@ -6118,8 +6118,26 @@ class Markup extends ProControl {
   // ── Events ────────────────────────────────────────────────────────────────
 
   mouseMoved() {
+    const wasHovered = this._hovered;
     this._hovered = mouseX >= this.x && mouseX <= this.x + this.width &&
                     mouseY >= this.y && mouseY <= this.y + this.height;
+
+    const canvas = this._clickCanvas ?? document.querySelector('canvas');
+    if (!canvas) return;
+
+    if (this._hovered) {
+      let overLink = false;
+      for (const lnk of this._links) {
+        if (mouseX >= lnk.x && mouseX <= lnk.x + lnk.w &&
+            mouseY >= lnk.y && mouseY <= lnk.y + lnk.h) {
+          overLink = true;
+          break;
+        }
+      }
+      canvas.style.cursor = overLink ? 'pointer' : '';
+    } else if (wasHovered) {
+      canvas.style.cursor = '';   // restore on leave
+    }
   }
 
   mousePressed() {
