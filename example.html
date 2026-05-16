@@ -60,6 +60,7 @@ const SIZES = {
   menu_bottom:     [400, 120],
   menu_right:      [200, 240],
   menu_popup:      [300, 200],
+  markup:          [280, 220],
 };
 
 const [W, H] = SIZES[CTRL] || [300, 200];
@@ -622,6 +623,30 @@ const dlg = new MessageDialog({
   message: 'Are you sure you want to discard all unsaved changes? This cannot be undone.',
   buttons: ['Cancel', 'Discard'],
   onButton: (i, lbl) => console.log(i, lbl),
+});`,
+
+  markup: `\
+const doc = new Markup({
+  x: 20, y: 15,
+  width: 240, height: 190,
+  fontSize: 11,
+  text: \`= ProControls =
+A hardware-inspired UI library for [[https://p5js.org|p5.js]].
+
+== Features ==
+* '''Real-time''' audio controls
+* '''8 built-in''' themes
+** black, stainless, white, brushed
+** red, blue, yellow, dimpled
+
+== Usage ==
+# Add the script tag
+# Call ''new AnalogSlider()''
+# Wire up '''onChange'''
+
+----
+: '''''Scroll for more'''''
+This panel supports '''bold''', ''italic'', and '''''bold italic''''' text inline with normal paragraphs. Long lines wrap automatically within the panel width.\`,
 });`,
 };
 

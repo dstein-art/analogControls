@@ -5727,3 +5727,339 @@ class Menu extends ProControl {
 }
 
 window.Menu = Menu;
+
+// ─── Markup ──────────────────────────────────────────────────────────────────
+// Display panel that renders text with basic Wiki Markup syntax.
+// Scroll with the mouse wheel when content overflows the panel.
+//
+// Supported syntax:
+//   = Heading 1 =    == Heading 2 ==    === Heading 3 ===
+//   '''bold'''    ''italic''    '''''bold italic'''''
+//   [[link text]]  or  [[url|display text]]
+//   * Bullet item    ** Sub-bullet
+//   # Numbered item  ## Sub-numbered
+//   : Indented block
+//   ----  (horizontal rule)
+//   (blank line = paragraph gap)
+//
+// Options:
+//   x, y, width, height, text, fontSize, padding, lineSpacing, theme
+
+class Markup extends ProControl {
+  constructor(opts = {}) {
+    super(opts);
+    this.width       = opts.width       ?? 280;
+    this.height      = opts.height      ?? 200;
+    this.fontSize    = opts.fontSize    ?? 12;
+    this.padding     = opts.padding     ?? 10;
+    this.lineSpacing = opts.lineSpacing ?? 1.5;
+    this._scrollY    = 0;
+    this._contentH   = 0;
+    this._hovered    = false;
+    this._blocks     = [];
+    this.text        = opts.text ?? '';   // setter parses immediately
+  }
+
+  get text()  { return this._text; }
+  set text(v) {
+    this._text    = String(v);
+    this._blocks  = this._parse(this._text);
+    this._scrollY = 0;
+  }
+
+  get scrollY()  { return this._scrollY; }
+  set scrollY(v) {
+    const max = Math.max(0, this._contentH - (this.height - this.padding * 2));
+    this._scrollY = constrain(v, 0, max);
+  }
+
+  // ── Parser ────────────────────────────────────────────────────────────────
+
+  _parse(src) {
+    const blocks = [];
+    let numIdx = 0, num2Idx = 0;
+
+    for (const raw of src.split('\n')) {
+      let m;
+
+      if (/^-{4,}\s*$/.test(raw)) {
+        numIdx = 0; num2Idx = 0;
+        blocks.push({ type: 'rule' }); continue;
+      }
+      if ((m = raw.match(/^(={1,6})\s*(.*?)\s*\1\s*$/))) {
+        numIdx = 0; num2Idx = 0;
+        const lvl = m[1].length;
+        blocks.push({ type: lvl === 1 ? 'h1' : lvl === 2 ? 'h2' : 'h3',
+                      tokens: this._inline(m[2]) }); continue;
+      }
+      if ((m = raw.match(/^\*{2}\s+(.*)/))) {
+        numIdx = 0; num2Idx = 0;
+        blocks.push({ type: 'bullet2', tokens: this._inline(m[1]) }); continue;
+      }
+      if ((m = raw.match(/^\*\s+(.*)/))) {
+        numIdx = 0; num2Idx = 0;
+        blocks.push({ type: 'bullet', tokens: this._inline(m[1]) }); continue;
+      }
+      if ((m = raw.match(/^#{2}\s+(.*)/))) {
+        blocks.push({ type: 'num2', n: ++num2Idx, tokens: this._inline(m[1]) }); continue;
+      }
+      if ((m = raw.match(/^#\s+(.*)/))) {
+        num2Idx = 0;
+        blocks.push({ type: 'num', n: ++numIdx, tokens: this._inline(m[1]) }); continue;
+      }
+      if ((m = raw.match(/^:\s*(.*)/))) {
+        numIdx = 0; num2Idx = 0;
+        blocks.push({ type: 'indent', tokens: this._inline(m[1]) }); continue;
+      }
+      if (raw.trim() === '') {
+        numIdx = 0; num2Idx = 0;
+        blocks.push({ type: 'spacer' }); continue;
+      }
+      blocks.push({ type: 'p', tokens: this._inline(raw) });
+    }
+    return blocks;
+  }
+
+  _inline(text) {
+    const toks = [];
+    let s = text;
+    while (s.length > 0) {
+      let m;
+      // Bold+italic first (five quotes)
+      if ((m = s.match(/^'{5}(.*?)'{5}([\s\S]*)$/)))
+        { toks.push({ text: m[1], bold: true, italic: true }); s = m[2]; continue; }
+      // Bold (three quotes)
+      if ((m = s.match(/^'{3}(.*?)'{3}([\s\S]*)$/)))
+        { toks.push({ text: m[1], bold: true }); s = m[2]; continue; }
+      // Italic (two quotes)
+      if ((m = s.match(/^'{2}(.*?)'{2}([\s\S]*)$/)))
+        { toks.push({ text: m[1], italic: true }); s = m[2]; continue; }
+      // Wiki link: [[url|label]] or [[label]]
+      if ((m = s.match(/^\[\[(?:[^\]|]*\|)?([^\]]*)\]\]([\s\S]*)$/)))
+        { toks.push({ text: m[1], link: true }); s = m[2]; continue; }
+      // Plain text up to next markup marker
+      const n = s.search(/'{2}|\[\[/);
+      if (n > 0) { toks.push({ text: s.slice(0, n) }); s = s.slice(n); }
+      else       { toks.push({ text: s }); break; }
+    }
+    return toks;
+  }
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+
+  _font(bold, italic, size) {
+    const fam = this.theme.font ?? 'system-ui, Arial, sans-serif';
+    return `${bold ? 'bold ' : ''}${italic ? 'italic ' : ''}${size}px ${fam}`;
+  }
+
+  // Wraps inline tokens into visual lines within maxW pixels.
+  // Returns array of lines; each line is [{text, bold, italic, link, x, w}].
+  _wrap(tokens, maxW, gc, size) {
+    const lines = [];
+    let cur = [], x = 0;
+    const flush = () => { if (cur.length) { lines.push(cur); cur = []; x = 0; } };
+
+    for (const tok of tokens) {
+      gc.font = this._font(tok.bold, tok.italic, size);
+      for (const part of tok.text.split(/(\s+)/)) {
+        if (!part) continue;
+        const pw = gc.measureText(part).width;
+        if (x + pw > maxW && x > 0 && part.trim()) flush();
+        cur.push({ text: part, bold: tok.bold, italic: tok.italic, link: tok.link, x, w: pw });
+        x += pw;
+      }
+    }
+    flush();
+    return lines;
+  }
+
+  // ── Draw ─────────────────────────────────────────────────────────────────
+
+  draw() {
+    this._markDrawn();
+    const { x, y, padding: pad, fontSize: fs, lineSpacing: ls } = this;
+    const pw = this.width, ph = this.height;
+    const lh = fs * ls;
+
+    this._drawPanel(x, y, pw, ph);
+
+    const gc  = drawingContext;
+    const txt = this.theme.readout;
+    const dim = this.theme.scaleText;
+    const acc = this.theme.capIndicator;
+    const maxW = pw - pad * 2;
+
+    gc.save();
+    gc.beginPath();
+    gc.rect(x + 1, y + 1, pw - 2, ph - 2);
+    gc.clip();
+    gc.textBaseline = 'top';
+    gc.textAlign    = 'left';
+
+    let cy = y + pad - this._scrollY;
+
+    for (const b of this._blocks) {
+
+      if (b.type === 'spacer') { cy += lh * 0.6; continue; }
+
+      if (b.type === 'rule') {
+        if (cy > y + pad - 2 && cy < y + ph) {
+          gc.save();
+          gc.strokeStyle = dim; gc.lineWidth = 1; gc.globalAlpha = 0.45;
+          gc.beginPath();
+          gc.moveTo(x + pad, cy + 6); gc.lineTo(x + pw - pad, cy + 6);
+          gc.stroke();
+          gc.restore();
+        }
+        cy += 14; continue;
+      }
+
+      if (b.type === 'h1' || b.type === 'h2' || b.type === 'h3') {
+        const sz  = b.type === 'h1' ? fs * 1.8 : b.type === 'h2' ? fs * 1.4 : fs * 1.15;
+        const slh = sz * ls;
+        if (b.type !== 'h3') cy += slh * 0.2;
+        const lines = this._wrap(b.tokens, maxW, gc, sz);
+        for (let li = 0; li < lines.length; li++) {
+          if (cy + slh > y + pad && cy < y + ph) {
+            for (const seg of lines[li]) {
+              gc.font = this._font(true, seg.italic, sz);
+              gc.fillStyle = txt;
+              gc.fillText(seg.text, x + pad + seg.x, cy);
+            }
+            if (b.type === 'h1' && li === lines.length - 1) {
+              gc.save();
+              gc.strokeStyle = dim; gc.lineWidth = 1; gc.globalAlpha = 0.3;
+              gc.beginPath();
+              gc.moveTo(x + pad, cy + slh * 0.92); gc.lineTo(x + pw - pad, cy + slh * 0.92);
+              gc.stroke();
+              gc.restore();
+            }
+          }
+          cy += slh;
+        }
+        cy += slh * 0.1; continue;
+      }
+
+      if (b.type === 'bullet' || b.type === 'bullet2') {
+        const sub   = b.type === 'bullet2';
+        const indX  = x + pad + (sub ? 14 : 0);
+        const textX = indX + 10;
+        const lines = this._wrap(b.tokens, x + pw - pad - textX, gc, fs);
+        for (let li = 0; li < lines.length; li++) {
+          if (cy + lh > y + pad && cy < y + ph) {
+            if (li === 0) {
+              gc.fillStyle = acc;
+              gc.beginPath();
+              gc.arc(indX + 3, cy + lh * 0.48, sub ? 1.5 : 2.5, 0, Math.PI * 2);
+              gc.fill();
+            }
+            for (const seg of lines[li]) {
+              gc.font = this._font(seg.bold, seg.italic, fs);
+              gc.fillStyle = seg.link ? acc : txt;
+              gc.fillText(seg.text, textX + seg.x, cy);
+            }
+          }
+          cy += lh;
+        }
+        continue;
+      }
+
+      if (b.type === 'num' || b.type === 'num2') {
+        const sub   = b.type === 'num2';
+        const indX  = x + pad + (sub ? 18 : 0);
+        const textX = indX + 16;
+        const lines = this._wrap(b.tokens, x + pw - pad - textX, gc, fs);
+        for (let li = 0; li < lines.length; li++) {
+          if (cy + lh > y + pad && cy < y + ph) {
+            if (li === 0) {
+              gc.font = this._font(false, false, fs - 1);
+              gc.fillStyle = acc;
+              gc.textAlign = 'right';
+              gc.fillText(`${b.n}.`, indX + 14, cy + 1);
+              gc.textAlign = 'left';
+            }
+            for (const seg of lines[li]) {
+              gc.font = this._font(seg.bold, seg.italic, fs);
+              gc.fillStyle = seg.link ? acc : txt;
+              gc.fillText(seg.text, textX + seg.x, cy);
+            }
+          }
+          cy += lh;
+        }
+        continue;
+      }
+
+      if (b.type === 'indent') {
+        const textX = x + pad + 14;
+        const lines = this._wrap(b.tokens, pw - pad * 2 - 14, gc, fs);
+        for (const segs of lines) {
+          if (cy + lh > y + pad && cy < y + ph) {
+            gc.save();
+            gc.fillStyle = dim; gc.globalAlpha = 0.4;
+            gc.fillRect(x + pad + 2, cy + 2, 2, lh - 4);
+            gc.globalAlpha = 1;
+            for (const seg of segs) {
+              gc.font = this._font(seg.bold, seg.italic, fs);
+              gc.fillStyle = seg.link ? acc : dim;
+              gc.fillText(seg.text, textX + seg.x, cy);
+            }
+            gc.restore();
+          }
+          cy += lh;
+        }
+        continue;
+      }
+
+      // Paragraph (default)
+      const lines = this._wrap(b.tokens, maxW, gc, fs);
+      for (const segs of lines) {
+        if (cy + lh > y + pad && cy < y + ph) {
+          for (const seg of segs) {
+            gc.font = this._font(seg.bold, seg.italic, fs);
+            gc.fillStyle = seg.link ? acc : txt;
+            gc.fillText(seg.text, x + pad + seg.x, cy);
+          }
+        }
+        cy += lh;
+      }
+    }
+
+    // Total content height = how far cy traveled from the start
+    this._contentH = cy + this._scrollY - (y + pad);
+    gc.restore();
+
+    // Thin scrollbar when content overflows
+    const maxScroll = Math.max(0, this._contentH - (ph - pad * 2));
+    if (maxScroll > 0) {
+      const trackH = ph - pad * 2;
+      const thumbH = Math.max(trackH * (ph - pad * 2) / this._contentH, 16);
+      const thumbY = y + pad + (this._scrollY / maxScroll) * (trackH - thumbH);
+      push();
+      noStroke();
+      fill(lerpColor(color(this.theme.panel), color(this.theme.scaleText), 0.25));
+      rect(x + pw - 4, y + pad, 3, trackH, 1);
+      fill(this.theme.scaleText);
+      rect(x + pw - 4, thumbY, 3, thumbH, 1);
+      pop();
+    }
+
+    if (this.disabled) this._drawDisabled(x, y, pw, ph);
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+
+  mouseMoved() {
+    this._hovered = mouseX >= this.x && mouseX <= this.x + this.width &&
+                    mouseY >= this.y && mouseY <= this.y + this.height;
+  }
+
+  mouseWheel(e) {
+    if (!this._hovered) return;
+    const maxScroll = Math.max(0, this._contentH - (this.height - this.padding * 2));
+    if (maxScroll <= 0) return;
+    this._scrollY = constrain(this._scrollY + (e.deltaY ?? e.delta ?? 0) * 0.4, 0, maxScroll);
+    return false;
+  }
+}
+
+window.Markup = Markup;

@@ -570,6 +570,7 @@
       <a href="#vudial">VUDial</a>
       <a href="#ledmeter">LEDMeter</a>
       <a href="#adsr">ADSRDisplay</a>
+      <a href="#markup">Markup</a>
     </div>
   </div>
   <span class="sep">·</span>
@@ -2016,6 +2017,94 @@ for (let i = 0; i &lt; 4; i++) {
 });</textarea>
       </div>
       <iframe class="example-frame" src="example.html?c=adsr" width="260" height="160" scrolling="no" frameborder="0" loading="lazy" title="ADSRDisplay live example"></iframe>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- Markup -->
+  <section id="markup">
+    <h2 id="markup">Markup <span class="tag ext">Display</span></h2>
+    <p class="desc">A scrollable text panel that renders a subset of Wiki Markup syntax — headings, bold, italic, bullet and numbered lists, indented blocks, horizontal rules, and links. Set <code>text</code> at any time to update the content; the panel re-parses and scrolls to the top automatically.</p>
+
+    <div class="sig">new Markup(opts)</div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>x, y</td><td>number</td><td>0</td><td>Top-left position of the panel.</td></tr>
+        <tr><td>width</td><td>number</td><td>280</td><td>Panel width in pixels.</td></tr>
+        <tr><td>height</td><td>number</td><td>200</td><td>Panel height (visible viewport) in pixels.</td></tr>
+        <tr><td>text</td><td>string</td><td>''</td><td>Wiki Markup source. Can be set at any time.</td></tr>
+        <tr><td>fontSize</td><td>number</td><td>12</td><td>Base font size in pixels. Headings scale relative to this.</td></tr>
+        <tr><td>padding</td><td>number</td><td>10</td><td>Inner padding on all sides.</td></tr>
+        <tr><td>lineSpacing</td><td>number</td><td>1.5</td><td>Line-height multiplier applied to <code>fontSize</code>.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties</h3>
+    <table class="opts">
+      <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>text</td><td>string (get/set)</td><td>Current markup source. Setting resets scroll to top.</td></tr>
+        <tr><td>scrollY</td><td>number (get/set)</td><td>Current vertical scroll offset in pixels. Clamped to valid range automatically.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Wiki Markup syntax</h3>
+    <table class="opts">
+      <thead><tr><th>Syntax</th><th>Renders as</th></tr></thead>
+      <tbody>
+        <tr><td><code>= Heading 1 =</code></td><td>Large heading with underline rule</td></tr>
+        <tr><td><code>== Heading 2 ==</code></td><td>Medium heading</td></tr>
+        <tr><td><code>=== Heading 3 ===</code></td><td>Small heading</td></tr>
+        <tr><td><code>'''bold'''</code></td><td><strong>Bold</strong> text</td></tr>
+        <tr><td><code>''italic''</code></td><td><em>Italic</em> text</td></tr>
+        <tr><td><code>'''''bold italic'''''</code></td><td><strong><em>Bold italic</em></strong> text</td></tr>
+        <tr><td><code>[[label]]</code> or <code>[[url|label]]</code></td><td>Link text (rendered in accent color)</td></tr>
+        <tr><td><code>* item</code></td><td>Bullet list item</td></tr>
+        <tr><td><code>** item</code></td><td>Sub-bullet list item</td></tr>
+        <tr><td><code># item</code></td><td>Numbered list item</td></tr>
+        <tr><td><code>## item</code></td><td>Sub-numbered list item</td></tr>
+        <tr><td><code>: text</code></td><td>Indented block with left bar</td></tr>
+        <tr><td><code>----</code></td><td>Horizontal rule</td></tr>
+        <tr><td><em>(blank line)</em></td><td>Paragraph gap</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Scrolling</h3>
+    <p class="desc">When content is taller than the panel, a thin scrollbar appears on the right edge. Scroll with the mouse wheel while hovering the panel. Set <code>scrollY</code> programmatically to jump to any position.</p>
+
+    <h3>Example</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const doc = new Markup({
+  x: 20, y: 15,
+  width: 240, height: 190,
+  fontSize: 11,
+  text: `= ProControls =
+A hardware-inspired UI library for [[https://p5js.org|p5.js]].
+
+== Features ==
+* '''Real-time''' audio controls
+* '''8 built-in''' themes
+** black, stainless, white, brushed
+** red, blue, yellow, dimpled
+
+== Usage ==
+# Add the script tag
+# Call ''new AnalogSlider()''
+# Wire up '''onChange'''
+
+----
+: '''''Scroll for more'''''
+This panel supports '''bold''', ''italic'', and '''''bold italic''''' text inline with normal paragraphs. Long lines wrap automatically within the panel width.\`,
+});</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=markup&s=black" width="280" height="220" scrolling="no" frameborder="0" loading="lazy" title="Markup live example"></iframe>
     </div>
   </section>
 
