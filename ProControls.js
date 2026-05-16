@@ -1926,17 +1926,23 @@ class XYPad extends ProControl {
     this.maxX   = opts.maxX  ?? this.max;
     this.minY   = opts.minY  ?? this.min;
     this.maxY   = opts.maxY  ?? this.max;
-    this.valueX = opts.valueX ?? (this.minX + this.maxX) / 2;
-    this.valueY = opts.valueY ?? (this.minY + this.maxY) / 2;
+    this._valueX = opts.valueX ?? (this.minX + this.maxX) / 2;
+    this._valueY = opts.valueY ?? (this.minY + this.maxY) / 2;
     this.scaleX    = opts.scaleX    ?? 'linear'; // 'linear' | 'log' (log requires minX > 0)
     this.scaleY    = opts.scaleY    ?? 'linear'; // 'linear' | 'log' (log requires minY > 0)
     this.onChangeX = opts.onChangeX ?? null;
     this.onChangeY = opts.onChangeY ?? null;
     this.crosshairColor = opts.crosshairColor ?? this.theme.capIndicator;
     this._pad = 10;
-    this._springDefaultX = this.valueX;
-    this._springDefaultY = this.valueY;
+    this._springDefaultX = opts.springDefaultX ?? (this.minX + this.maxX) / 2;
+    this._springDefaultY = opts.springDefaultY ?? (this.minY + this.maxY) / 2;
   }
+
+  get valueX() { return this._valueX; }
+  set valueX(v) { this._valueX = Math.min(Math.max(v, this.minX), this.maxX); }
+
+  get valueY() { return this._valueY; }
+  set valueY(v) { this._valueY = Math.min(Math.max(v, this.minY), this.maxY); }
 
   _normX() {
     if (this.scaleX === 'log') return Math.log(this.valueX / this.minX) / Math.log(this.maxX / this.minX);
