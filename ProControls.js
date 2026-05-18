@@ -391,6 +391,14 @@ class ProControl {
     if (i !== -1) _proControlRegistry.splice(i, 1);
   }
 
+  // Like remove() but only de-registers without any cleanup — used by Panel.add()
+  // so composite controls (MultiSlider, MultiDial) can be adopted without destroying
+  // their internal sub-children.
+  _detach() {
+    const i = _proControlRegistry.indexOf(this);
+    if (i !== -1) _proControlRegistry.splice(i, 1);
+  }
+
   // Map value (or v) to [0,1]
   _norm(v = this.value) {
     if (this.scale === 'log') {
@@ -3037,7 +3045,7 @@ class MultiSlider extends ProControl {
     const keys    = Object.keys(sliders);
     const gap     = opts.gap ?? 4;
 
-    this._names    = keys;
+    this._names    = keys.map(k => k.replace(/[^a-zA-Z0-9]/g, ''));
     this._children = [];
 
     // Shared defaults applied to every child slider
@@ -3075,8 +3083,7 @@ class MultiSlider extends ProControl {
         onChange:  () => { if (this.onChange)  this.onChange(this._values()); },
         onRelease: () => { if (this.onRelease) this.onRelease(this._values()); },
       });
-      // Children stay in _proControlRegistry — they handle their own events
-      // independently, just like standalone sliders.
+      s._detach(); // managed by MultiSlider, not the global registry
       this._children.push(s);
       if (this.horizontal) {
         curY += s.height + gap;
@@ -3126,6 +3133,12 @@ class MultiSlider extends ProControl {
     return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
   }
 
+  mouseMoved()    { for (const s of this._children) s.mouseMoved(); }
+  mousePressed()  { for (const s of this._children) s.mousePressed(); }
+  mouseReleased() { for (const s of this._children) s.mouseReleased(); }
+  mouseWheel(e)   { for (const s of this._children) s.mouseWheel(e); }
+  _tickSpring()   { for (const s of this._children) s._tickSpring(); }
+
   draw() {
     this._markDrawn();
     const bb = this._bb();
@@ -3135,7 +3148,6 @@ class MultiSlider extends ProControl {
 
   remove() {
     super.remove();
-    for (const s of this._children) s.remove();
     this._children = [];
   }
 }
@@ -3165,7 +3177,7 @@ class MultiDial extends ProControl {
     const keys  = Object.keys(dials);
     const gap   = opts.gap ?? 4;
 
-    this._names    = keys;
+    this._names    = keys.map(k => k.replace(/[^a-zA-Z0-9]/g, ''));
     this._children = [];
 
     const base = {
@@ -3201,7 +3213,7 @@ class MultiDial extends ProControl {
         onChange:  () => { if (this.onChange)  this.onChange(this._values()); },
         onRelease: () => { if (this.onRelease) this.onRelease(this._values()); },
       });
-      // Children stay in _proControlRegistry — they handle their own events.
+      d._detach(); // managed by MultiDial, not the global registry
       this._children.push(d);
       if (this.horizontal) {
         curX += d.size + gap;
@@ -3251,6 +3263,12 @@ class MultiDial extends ProControl {
     return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
   }
 
+  mouseMoved()    { for (const d of this._children) d.mouseMoved(); }
+  mousePressed()  { for (const d of this._children) d.mousePressed(); }
+  mouseReleased() { for (const d of this._children) d.mouseReleased(); }
+  mouseWheel(e)   { for (const d of this._children) d.mouseWheel(e); }
+  _tickSpring()   { for (const d of this._children) d._tickSpring(); }
+
   draw() {
     this._markDrawn();
     const bb = this._bb();
@@ -3260,7 +3278,6 @@ class MultiDial extends ProControl {
 
   remove() {
     super.remove();
-    for (const d of this._children) d.remove();
     this._children = [];
   }
 }
@@ -4440,15 +4457,19 @@ class Panel extends ProControl {
     this._minimized  = opts.minimized  ?? false;
     this.minimizable = opts.minimizable !== false;
     this.movable     = opts.movable     !== false;
+    this.resizable   = opts.resizable   ?? false;
     this._children  = [];
     this._scrollX   = 0;
     this._scrollY   = 0;
     this._sbW          = 8;    // scrollbar thickness px
     this._btnSz        = 10;   // minimize toggle button size px
+    this._gripSz       = 12;   // resize grip hit area px
     this._dragSB       = null; // 'v' | 'h' | null
     this._dragSBRef    = null;
     this._draggingPanel = false;
     this._dragPanelOff  = null; // {dx, dy} offset from panel origin at drag start
+    this._resizing      = false;
+    this._gripHovered   = false;
   }
 
   get visible()    { return this._visible; }
@@ -4490,11 +4511,72 @@ class Panel extends ProControl {
     return mx >= r.bx && mx <= r.bx + r.bsz && my >= r.by && my <= r.by + r.bsz;
   }
 
-  // Remove control from the global registry and adopt it into this panel.
+  // De-register a control from the global loop and adopt it into this panel.
   add(control) {
-    control.remove();
+    control._detach();
     this._children.push(control);
+    this._attachPanelNotify(control);
     return this;
+  }
+
+  get values() { return this._data(); }
+
+  // Wire up a child control so changes/releases fire panel.onChange / panel.onRelease.
+  _attachPanelNotify(control) {
+    const notifyChange  = () => { if (this.onChange)  this.onChange(this._data()); };
+    const notifyRelease = () => { if (this.onRelease) this.onRelease(this._data()); };
+
+    if (control instanceof XYPad) {
+      const ucX = control.onChangeX, ucY = control.onChangeY;
+      control.onChangeX = (...a) => { if (ucX) ucX(...a); notifyChange(); };
+      control.onChangeY = (...a) => { if (ucY) ucY(...a); notifyChange(); };
+      const ucR = control.onRelease;
+      control.onRelease = (...a) => { if (ucR) ucR(...a); notifyRelease(); };
+    } else if (control instanceof IconButton) {
+      const uc = control.onClick;
+      control.onClick = (...a) => { if (uc) uc(...a); notifyChange(); notifyRelease(); };
+    } else {
+      const ucC = control.onChange,  ucR = control.onRelease;
+      control.onChange  = (...a) => { if (ucC) ucC(...a); notifyChange(); };
+      control.onRelease = (...a) => { if (ucR) ucR(...a); notifyRelease(); };
+    }
+  }
+
+  // Returns an object snapshot of all child control values.
+  // Field names come from the control's label (spaces/punctuation stripped),
+  // or ClassName + counter when there is no label (e.g. AnalogSlider1).
+  _data() {
+    const result = {}, counters = {};
+    for (const c of this._children) {
+      const val = this._controlValue(c);
+      if (val === undefined) continue;
+      result[this._fieldKey(c, counters)] = val;
+    }
+    return result;
+  }
+
+  _fieldKey(c, counters) {
+    const lbl = (c.label ?? '').trim();
+    if (lbl) return lbl.replace(/[^a-zA-Z0-9]/g, '');
+    const name = c.constructor.name;
+    counters[name] = (counters[name] ?? 0) + 1;
+    return name + counters[name];
+  }
+
+  _controlValue(c) {
+    if (c instanceof Markup || c instanceof Menu || c instanceof Panel ||
+        c instanceof VUMeter || c instanceof LEDMeter || c instanceof ADSRDisplay)
+      return undefined;
+    if (c instanceof RangeSlider) return { low: c.valueLow, high: c.valueHigh };
+    if (c instanceof XYPad)       return { x: c.valueX, y: c.valueY };
+    if (c instanceof TagSelector) return [...c.selected];
+    if (c instanceof MultiSlider || c instanceof MultiDial || c instanceof GridPad)
+      return c.values;
+    if (c instanceof Switch)         return c.states?.[c.state] ?? c.state;
+    if (c instanceof Selector)       return c.options?.[c.state] ?? c.state;
+    if (c instanceof SliderSelector) return c.options?.[c.state] ?? c.state;
+    if (c instanceof IconButton)     return c.state;
+    return c.value ?? null;
   }
 
   remove() {
@@ -4529,6 +4611,12 @@ class Panel extends ProControl {
     return mx >= this.x && mx <= this.x + this.width &&
            my >= this.y && my <= this.y + this._drawnH();
   }
+  _inResizeHandle(mx, my) {
+    if (!this.resizable || this._minimized) return false;
+    const rh = this._drawnH();
+    return mx >= this.x + this.width - this._gripSz && mx <= this.x + this.width &&
+           my >= this.y + rh - this._gripSz       && my <= this.y + rh;
+  }
   _inViewport(mx, my) {
     if (this._minimized) return false;
     return mx >= this.x && mx <= this.x + this._viewW() &&
@@ -4546,6 +4634,15 @@ class Panel extends ProControl {
   // ── Event handlers ──────────────────────────────────────────────────────────
   mouseMoved() {
     if (!this._visible) return;
+
+    // Resize — stretch width/height to follow mouse
+    if (this._resizing) {
+      this.width  = Math.max(60, mouseX - this.x);
+      this.height = Math.max(this._titleH + 40, mouseY - this.y);
+      const canvas = document.querySelector('canvas');
+      if (canvas) canvas.style.cursor = 'nwse-resize';
+      return;
+    }
 
     // Panel drag — move origin to follow mouse
     if (this._draggingPanel && this._dragPanelOff) {
@@ -4581,6 +4678,16 @@ class Panel extends ProControl {
       for (const c of this._children) c.mouseMoved();
       window.mouseX = ox; window.mouseY = oy;
     }
+
+    // Resize cursor — only update on enter/leave to avoid stomping other controls' cursors
+    if (this.resizable && !this._minimized) {
+      const wasGrip = this._gripHovered;
+      this._gripHovered = this._inResizeHandle(mouseX, mouseY);
+      if (this._gripHovered !== wasGrip) {
+        const canvas = document.querySelector('canvas');
+        if (canvas) canvas.style.cursor = this._gripHovered ? 'nwse-resize' : '';
+      }
+    }
   }
 
   mousePressed() {
@@ -4601,6 +4708,12 @@ class Panel extends ProControl {
 
     if (this._minimized) return;
 
+    // Resize grip — takes priority over scrollbar drag in the corner
+    if (this._inResizeHandle(mouseX, mouseY)) {
+      this._resizing = true;
+      return;
+    }
+
     if (this._needsV() && mouseX >= this.x + this._viewW()) {
       this._dragSB    = 'v';
       this._dragSBRef = { my: mouseY, scrollY: this._scrollY };
@@ -4618,6 +4731,12 @@ class Panel extends ProControl {
 
   mouseReleased() {
     if (!this._visible) return;
+    if (this._resizing) {
+      this._resizing    = false;
+      this._gripHovered = false;
+      const canvas = document.querySelector('canvas');
+      if (canvas) canvas.style.cursor = '';
+    }
     this._draggingPanel = false;
     this._dragPanelOff  = null;
     this._dragSB    = null;
@@ -4692,6 +4811,29 @@ class Panel extends ProControl {
 
     if (needsV) this._drawVScrollBar(viewW, viewH, contentY);
     if (needsH) this._drawHScrollBar(viewW, viewH, contentY);
+    if (this.resizable) this._drawResizeHandle();
+  }
+
+  _drawResizeHandle() {
+    const { x, y, width, theme } = this;
+    const rh  = this._drawnH();
+    const hov = this._inResizeHandle(mouseX, mouseY) || this._resizing;
+    const col = hov
+      ? theme.capHighlight
+      : lerpColor(color(theme.panel), color(theme.panelStroke), 0.9);
+    push();
+    noStroke();
+    fill(col);
+    // Six dots in a triangular grid at the bottom-right corner
+    const cx = x + width, cy = y + rh;
+    const d = 1.8, sp = 4;
+    ellipse(cx - 3,        cy - 3,        d, d);
+    ellipse(cx - 3 - sp,   cy - 3,        d, d);
+    ellipse(cx - 3,        cy - 3 - sp,   d, d);
+    ellipse(cx - 3 - sp*2, cy - 3,        d, d);
+    ellipse(cx - 3 - sp,   cy - 3 - sp,   d, d);
+    ellipse(cx - 3,        cy - 3 - sp*2, d, d);
+    pop();
   }
 
   _drawToggleBtn() {
