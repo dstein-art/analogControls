@@ -559,6 +559,7 @@
       <a href="#panel">Panel</a>
       <a href="#messageDialog">MessageDialog</a>
       <a href="#inputDialog">InputDialog</a>
+      <a href="#consolePanel">ConsolePanel</a>
     </div>
   </div>
   <span class="sep">·</span>
@@ -1848,6 +1849,90 @@ for (let i = 0; i &lt; 4; i++) {
 });</textarea>
       </div>
       <iframe class="example-frame" src="example.html?c=inputDialog" width="290" height="195" scrolling="no" frameborder="0" loading="lazy" title="InputDialog live example"></iframe>
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- ConsolePanel -->
+  <section id="consolePanel">
+    <h2>ConsolePanel <span class="tag ext">Utility</span></h2>
+    <p class="desc">A floating, scrollable log panel that intercepts <code>console.log</code>, <code>console.warn</code>, <code>console.error</code>, and <code>console.info</code> calls as well as uncaught runtime errors and unhandled promise rejections. Messages are color-coded by type and displayed in chronological order with optional timestamps. The panel auto-scrolls to the newest message unless the user has scrolled up to review earlier output. A <strong>CLR</strong> button in the title bar clears the log instantly. The panel can be dragged by its title bar and optionally resized from the bottom-right corner.</p>
+
+    <div class="sig">new ConsolePanel(opts)</div>
+
+    <h3>Options</h3>
+    <table class="opts">
+      <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>x, y</td><td>number</td><td>20, 20</td><td>Canvas position of the panel's top-left corner.</td></tr>
+        <tr><td>width</td><td>number</td><td>400</td><td>Panel width in pixels.</td></tr>
+        <tr><td>height</td><td>number</td><td>200</td><td>Panel height in pixels.</td></tr>
+        <tr><td>label</td><td>string</td><td>'Console'</td><td>Text shown in the title bar.</td></tr>
+        <tr><td>movable</td><td>boolean</td><td>true</td><td>When <code>false</code> the panel cannot be repositioned by dragging.</td></tr>
+        <tr><td>resizable</td><td>boolean</td><td>false</td><td>When <code>true</code> a resize grip appears in the bottom-right corner; drag it to resize the panel at runtime.</td></tr>
+        <tr><td>maxMessages</td><td>number</td><td>100</td><td>Maximum number of messages retained. Oldest messages are dropped when the buffer is full.</td></tr>
+        <tr><td>timestamps</td><td>boolean</td><td>true</td><td>Prefix each message with a <code>[HH:MM:SS]</code> timestamp. Set to <code>false</code> to suppress.</td></tr>
+        <tr><td>intercept</td><td>string[]</td><td><code>['log','warn','error','info']</code></td><td>The <code>console</code> methods to intercept. Pass a subset to limit capture, e.g. <code>['error','warn']</code>.</td></tr>
+        <tr><td>theme</td><td>object</td><td>{}</td><td>Partial theme override. See <a href="#themes">Themes</a>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Properties &amp; methods</h3>
+    <table class="opts">
+      <thead><tr><th>Name</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>.clear()</code></td><td>Clears all messages and resets scroll to the top. Same as clicking the CLR button.</td></tr>
+        <tr><td><code>.messages</code></td><td>Read-only getter. Returns a shallow copy of the current message array. Each entry is <code>{ type, text, time }</code>.</td></tr>
+        <tr><td><code>.remove()</code></td><td>Removes the panel from the canvas and restores all intercepted <code>console</code> methods to their originals. Always call this when you no longer need the panel.</td></tr>
+        <tr><td><code>.label</code></td><td>Read/write. Changes the text shown in the title bar.</td></tr>
+        <tr><td><code>.resizable</code></td><td>Read/write. Enables or disables the resize grip at runtime.</td></tr>
+        <tr><td><code>.movable</code></td><td>Read/write. Enables or disables title-bar dragging at runtime.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Message colors</h3>
+    <table class="opts">
+      <thead><tr><th>Source</th><th>Color</th></tr></thead>
+      <tbody>
+        <tr><td><code>console.log</code></td><td>Theme label color (default text)</td></tr>
+        <tr><td><code>console.info</code></td><td>Theme accent / indicator color</td></tr>
+        <tr><td><code>console.warn</code></td><td>Amber <code>#cc8800</code></td></tr>
+        <tr><td><code>console.error</code> / uncaught errors</td><td>Red <code>#dd3333</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Interaction</h3>
+    <table class="opts">
+      <thead><tr><th>Gesture</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td>Drag title bar</td><td>Repositions the panel (when <code>movable</code> is <code>true</code>).</td></tr>
+        <tr><td>Scroll wheel</td><td>Scrolls the message log. Auto-scroll resumes when you reach the bottom.</td></tr>
+        <tr><td>Drag scrollbar</td><td>Scrolls by dragging the thin scrollbar on the right edge (visible when content overflows).</td></tr>
+        <tr><td>Click CLR button</td><td>Clears all messages.</td></tr>
+        <tr><td>Drag resize grip</td><td>Resizes the panel (when <code>resizable</code> is <code>true</code>).</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note"><strong>Console passthrough:</strong> intercepted methods still call the original browser console functions, so DevTools output is unaffected. Call <code>.remove()</code> to fully restore the originals.</div>
+
+    <h3>Example</h3>
+    <div class="example-row">
+      <div class="live-editor">
+        <div class="live-hint">editable — changes update the preview</div>
+        <textarea class="live-code" spellcheck="false">const con = new ConsolePanel({
+  x: 20, y: 20,
+  width: 360, height: 180,
+  label: 'Console',
+  resizable: true,
+});
+
+// Any console.log / warn / error appears in the panel:
+console.log('Sketch started');
+console.warn('Low memory');
+console.error('Something went wrong');</textarea>
+      </div>
+      <iframe class="example-frame" src="example.html?c=consolePanel" width="400" height="220" scrolling="no" frameborder="0" loading="lazy" title="ConsolePanel live example"></iframe>
     </div>
   </section>
 
