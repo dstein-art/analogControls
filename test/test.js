@@ -9,9 +9,14 @@ function setup() {
   //control.onChange = message;
   //control.onRelease = mousePressedX;
 
+  const ms = new MultiSlider();
+  ms.onRelease = (value) => {
+    print('multi slider released',value);
+  }
+
 
   const doc = new Markup({
-    x: 20, y: 15,
+    x: 220, y: 15,
     width: 240, height: 200,
     fontSize: 11,
     text: `= ProControls =

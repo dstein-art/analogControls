@@ -1,6 +1,6 @@
 // ProControls.js — base class + Slider for p5.js
 // Copyright © David Stein 2026
-// Last updated: 2026-05-18 — commit 0c04cd3
+// Last updated: 2026-05-18 11:46 — commit 61a1070
 
 // Set ControlStyle before creating controls to choose a built-in look.
 // Per-control overrides still work via opts.theme.
@@ -3043,7 +3043,7 @@ class MultiSlider extends ProControl {
     this.onRelease  = opts.onRelease ?? null;
     this.horizontal = opts.horizontal ?? false;
 
-    const sliders = opts.sliders ?? {};
+    const sliders = opts.sliders ?? { '1': 0.5, '2': 0.5, '3': 0.5 };
     const keys    = Object.keys(sliders);
     const gap     = opts.gap ?? 4;
 
@@ -3175,7 +3175,7 @@ class MultiDial extends ProControl {
     this.onRelease  = opts.onRelease  ?? null;
     this.horizontal = opts.horizontal ?? true; // true = row, false = column
 
-    const dials = opts.dials ?? {};
+    const dials = opts.dials ?? { '1': 0.5, '2': 0.5, '3': 0.5 };
     const keys  = Object.keys(dials);
     const gap   = opts.gap ?? 4;
 
@@ -3620,7 +3620,7 @@ window.GridPad = GridPad;
 class TagSelector extends ProControl {
   constructor(opts = {}) {
     super(opts);
-    this.words     = opts.words    ?? [];
+    this.words     = opts.words    ?? ['Tag 1', 'Tag 2', 'Tag 3'];
     this._selected = new Set(opts.selected ?? []);
     this._initSel  = new Set(opts.selected ?? []);
     this.width     = opts.width    ?? 200;
@@ -3897,7 +3897,7 @@ window.TagSelector = TagSelector;
 class SliderSelector extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
-    this.options  = opts.options ?? [];
+    this.options  = opts.options ?? ['A', 'B', 'C'];
     this.state    = constrain(opts.state ?? 0, 0, Math.max(0, this.options.length - 1));
     this.style    = opts.style ?? 'knob';  // 'knob' | 'button'
 
@@ -4907,8 +4907,8 @@ window.Panel = Panel;
 class MessageDialog extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
-    this.message  = opts.message  ?? '';
-    this.buttons  = opts.buttons  ?? [];
+    this.message  = opts.message  ?? 'Message';
+    this.buttons  = opts.buttons  ?? ['OK'];
     this.movable  = opts.movable  !== false;
     this.onButton = opts.onButton ?? null;
 
@@ -5095,8 +5095,8 @@ window.MessageDialog = MessageDialog;
 class InputDialog extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
-    this.message          = opts.message          ?? '';
-    this.buttons          = opts.buttons          ?? [];
+    this.message          = opts.message          ?? 'Enter a value:';
+    this.buttons          = opts.buttons          ?? ['OK', 'Cancel'];
     this.movable          = opts.movable          !== false;
     this.onButton         = opts.onButton         ?? null;
     this.inputValue       = opts.inputValue       ?? '';
@@ -5566,7 +5566,7 @@ window.IconButton = IconButton;
 class Menu extends ProControl {
   constructor(opts = {}) {
     super(opts);
-    this.items       = opts.items       ?? [];
+    this.items       = opts.items       ?? ['File', 'Edit', 'View'];
     this.orientation = opts.orientation ?? 'top';
     this.onChange    = opts.onChange    ?? null;
 
@@ -5921,7 +5921,7 @@ class Markup extends ProControl {
     this._links      = [];   // [{x,y,w,h,href}] rebuilt each draw frame
     this._popupHref  = null; // href shown in the URL popup, null = hidden
     this.onClick     = opts.onClick ?? null; // onClick(href|null)
-    this.text          = opts.text ?? '';   // setter parses immediately
+    this.text          = opts.text ?? '= Markup =\nWiki-formatted text panel.\n* Bold: \'\'\'bold\'\'\'\n* Italic: \'\'italic\'\'\n* Links: [[https://example.com|Label]]';   // setter parses immediately
   }
 
   get text()  { return this._text; }
@@ -6332,3 +6332,367 @@ class Markup extends ProControl {
 }
 
 window.Markup = Markup;
+
+// ─── ConsolePanel ─────────────────────────────────────────────────────────────
+// Intercepts console.log/warn/error/info, window errors, and unhandled promise
+// rejections, displaying them as a scrollable, color-coded log panel.
+//
+// opts: x, y, width, height, label, movable, resizable,
+//       maxMessages, timestamps, intercept[], theme
+
+class ConsolePanel extends ProControl {
+  constructor(opts = {}) {
+    super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
+    this.width       = opts.width       ?? 400;
+    this.height      = opts.height      ?? 200;
+    this.label       = opts.label       ?? 'Console';
+    this.movable     = opts.movable     !== false;
+    this.resizable   = opts.resizable   ?? false;
+    this._maxMsgs    = opts.maxMessages ?? 100;
+    this._showTime   = opts.timestamps  !== false;
+
+    this._msgs          = [];   // { type, text, time, lines, lineCount }
+    this._scrollY       = 0;
+    this._contentH      = 0;
+    this._autoScroll    = true;
+    this._layoutDirty   = true;
+    this._lastWidth     = this.width;
+    this._pendingBottom = false;
+
+    this._rowH    = 13;
+    this._padX    = 6;
+    this._padY    = 4;
+    this._sbW     = 6;
+    this._gripSz  = 12;
+
+    this._clrHov        = false;
+    this._dragSB        = false;
+    this._dragSBRef     = null;
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
+    this._resizing      = false;
+    this._gripHovered   = false;
+
+    // Intercept console methods
+    this._originals = {};
+    const methods = opts.intercept ?? ['log', 'warn', 'error', 'info'];
+    for (const m of methods) {
+      this._originals[m] = console[m].bind(console);
+      console[m] = (...args) => { this._originals[m](...args); this._addMsg(m, args); };
+    }
+
+    // Catch uncaught errors and unhandled rejections
+    this._onErr = e => this._addMsg('error', [`${e.message}  (${e.filename}:${e.lineno})`]);
+    this._onRej = e => this._addMsg('error', [`Unhandled rejection: ${e.reason}`]);
+    window.addEventListener('error', this._onErr);
+    window.addEventListener('unhandledrejection', this._onRej);
+  }
+
+  // ── Public API ────────────────────────────────────────────────────────────
+
+  clear() {
+    this._msgs        = [];
+    this._scrollY     = 0;
+    this._contentH    = 0;
+    this._layoutDirty = true;
+  }
+
+  get messages() { return [...this._msgs]; }
+
+  remove() {
+    super.remove();
+    for (const [m, fn] of Object.entries(this._originals)) console[m] = fn;
+    window.removeEventListener('error', this._onErr);
+    window.removeEventListener('unhandledrejection', this._onRej);
+  }
+
+  // ── Internals ─────────────────────────────────────────────────────────────
+
+  _addMsg(type, args) {
+    const text = args.map(a => {
+      if (a === null)      return 'null';
+      if (a === undefined) return 'undefined';
+      if (a instanceof Error) return a.stack ?? String(a);
+      if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+      return String(a);
+    }).join(' ');
+
+    const d = new Date();
+    const time = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    this._msgs.push({ type, text, time, lines: null, lineCount: 1 });
+    if (this._msgs.length > this._maxMsgs) this._msgs.shift();
+    this._layoutDirty = true;
+    if (this._autoScroll) this._pendingBottom = true;
+  }
+
+  // ── Geometry ──────────────────────────────────────────────────────────────
+
+  get _titleH()   { return 20; }
+  _bodyH()        { return this.height - this._titleH; }
+  _needsScroll()  { return this._contentH > this._bodyH(); }
+  _maxScrollY()   { return Math.max(0, this._contentH - this._bodyH()); }
+
+  _inBounds(mx, my) {
+    return mx >= this.x && mx <= this.x + this.width &&
+           my >= this.y && my <= this.y + this.height;
+  }
+
+  _clrBtnRect() {
+    const bw = 24, bh = 14, pad = 5;
+    return { x: this.x + this.width - bw - pad, y: this.y + (this._titleH - bh) / 2, w: bw, h: bh };
+  }
+
+  _inClrBtn(mx, my) {
+    const r = this._clrBtnRect();
+    return mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
+  }
+
+  _inResizeHandle(mx, my) {
+    if (!this.resizable) return false;
+    return mx >= this.x + this.width  - this._gripSz && mx <= this.x + this.width &&
+           my >= this.y + this.height - this._gripSz && my <= this.y + this.height;
+  }
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+
+  _buildLayout() {
+    this._layoutDirty = false;
+    const sbExtra = this._needsScroll() ? this._sbW : 0;
+    const availW  = this.width - this._padX * 2 - sbExtra;
+    textSize(9);
+    if (this.theme.font) textFont(this.theme.font);
+
+    // Invalidate wrapped lines for any message whose cached width is stale
+    if (this._lastWidth !== this.width) {
+      for (const m of this._msgs) m.lines = null;
+      this._lastWidth = this.width;
+    }
+
+    let h = this._padY;
+    for (const m of this._msgs) {
+      if (!m.lines) {
+        const prefix = this._showTime ? `[${m.time}] ` : '';
+        m.lines     = _dialogWrapText(prefix + m.text, availW);
+        m.lineCount = m.lines.length || 1;
+      }
+      h += m.lineCount * this._rowH;
+    }
+    this._contentH = h + this._padY;
+
+    // Re-check scroll need and redo if scrollbar just appeared/disappeared
+    const needsNow = this._contentH > this._bodyH();
+    if (needsNow !== this._hadScroll) {
+      this._hadScroll = needsNow;
+      for (const m of this._msgs) m.lines = null;
+      this._buildLayout();
+      return;
+    }
+
+    if (this._pendingBottom) {
+      this._pendingBottom = false;
+      this._scrollY = this._maxScrollY();
+    }
+  }
+
+  _typeCol(type) {
+    switch (type) {
+      case 'error': return '#dd3333';
+      case 'warn':  return '#cc8800';
+      case 'info':  return this.theme.capIndicator;
+      default:      return this.theme.label;
+    }
+  }
+
+  // ── Drawing ───────────────────────────────────────────────────────────────
+
+  draw() {
+    this._markDrawn();
+    const { x, y, width, theme } = this;
+    const contentY = y + this._titleH;
+
+    // Background
+    push();
+    fill(theme.panel);
+    stroke(theme.panelStroke);
+    strokeWeight(1);
+    rect(x, y, width, this.height, 4);
+    pop();
+
+    // Title bar
+    _drawBevelTitleBar(theme, x, y, width, this._titleH, false, this.label);
+    this._drawClrBtn();
+
+    // Compute layout inside a push() so textWidth() is available
+    push();
+    textSize(9);
+    if (this.theme.font) textFont(this.theme.font);
+    if (this._layoutDirty) this._buildLayout();
+
+    // Clip and draw message rows
+    const bodyH = this._bodyH();
+    const gc    = drawingContext;
+    gc.save();
+    gc.beginPath();
+    gc.rect(x + 1, contentY + 1, width - 2, bodyH - 2);
+    gc.clip();
+
+    textAlign(LEFT, TOP);
+    noStroke();
+    let curY = contentY + this._padY - this._scrollY;
+    for (const m of this._msgs) {
+      if (!m.lines) continue;
+      fill(this._typeCol(m.type));
+      for (const line of m.lines) {
+        if (curY + this._rowH > contentY && curY < contentY + bodyH) {
+          text(line, x + this._padX, curY);
+        }
+        curY += this._rowH;
+      }
+    }
+    gc.restore();
+    pop();
+
+    // Scrollbar
+    if (this._needsScroll()) this._drawScrollBar(contentY, bodyH);
+
+    // Resize grip
+    if (this.resizable) this._drawResizeGrip();
+  }
+
+  _drawClrBtn() {
+    const r = this._clrBtnRect();
+    const { theme } = this;
+    push();
+    noStroke();
+    fill(this._clrHov
+      ? lerpColor(color(theme.capBody), color(theme.capHighlight), 0.5)
+      : lerpColor(color(theme.panel), color(theme.panelStroke), 0.7));
+    rect(r.x, r.y, r.w, r.h, 2);
+    fill(theme.label);
+    textSize(8);
+    textAlign(CENTER, CENTER);
+    if (this.theme.font) textFont(this.theme.font);
+    text('CLR', r.x + r.w / 2, r.y + r.h / 2);
+    pop();
+  }
+
+  _drawScrollBar(contentY, bodyH) {
+    const { x, width, theme } = this;
+    const sbX  = x + width - this._sbW;
+    const tH   = Math.max(16, (bodyH / this._contentH) * bodyH);
+    const maxS = this._maxScrollY();
+    const ty   = contentY + (maxS > 0 ? (this._scrollY / maxS) * (bodyH - tH) : 0);
+    push();
+    noStroke();
+    fill(lerpColor(color(theme.panel), color(theme.track), 0.4));
+    rect(sbX, contentY, this._sbW, bodyH, 2);
+    fill(lerpColor(color(theme.capBody), color(theme.capHighlight), 0.3));
+    rect(sbX + 1, ty, this._sbW - 2, tH, 2);
+    pop();
+  }
+
+  _drawResizeGrip() {
+    const { x, y, width, height, theme } = this;
+    const hov = this._inResizeHandle(mouseX, mouseY) || this._resizing;
+    const col = hov
+      ? theme.capHighlight
+      : lerpColor(color(theme.panel), color(theme.panelStroke), 0.9);
+    push();
+    noStroke();
+    fill(col);
+    const cx = x + width, cy = y + height;
+    const d = 1.8, sp = 4;
+    ellipse(cx - 3,       cy - 3,       d, d);
+    ellipse(cx - 3 - sp,  cy - 3,       d, d);
+    ellipse(cx - 3,       cy - 3 - sp,  d, d);
+    ellipse(cx - 3-sp*2,  cy - 3,       d, d);
+    ellipse(cx - 3 - sp,  cy - 3 - sp,  d, d);
+    ellipse(cx - 3,       cy - 3-sp*2,  d, d);
+    pop();
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+
+  mouseMoved() {
+    if (!this._visible) return;
+
+    if (this._resizing) {
+      this.width  = Math.max(100, mouseX - this.x);
+      this.height = Math.max(60,  mouseY - this.y);
+      this._layoutDirty = true;
+      const cv = document.querySelector('canvas');
+      if (cv) cv.style.cursor = 'nwse-resize';
+      return;
+    }
+
+    if (this._draggingPanel) {
+      this.x = mouseX - this._dragPanelOff.dx;
+      this.y = mouseY - this._dragPanelOff.dy;
+      return;
+    }
+
+    if (this._dragSB) {
+      const bodyH = this._bodyH();
+      const tH    = Math.max(16, (bodyH / this._contentH) * bodyH);
+      const range = bodyH - tH;
+      if (range > 0) {
+        const dy = mouseY - this._dragSBRef.my;
+        this._scrollY = constrain(this._dragSBRef.scrollY + dy * (this._maxScrollY() / range), 0, this._maxScrollY());
+        this._autoScroll = this._scrollY >= this._maxScrollY() - 2;
+      }
+      return;
+    }
+
+    this._clrHov = this._inClrBtn(mouseX, mouseY);
+
+    if (this.resizable) {
+      const was = this._gripHovered;
+      this._gripHovered = this._inResizeHandle(mouseX, mouseY);
+      if (this._gripHovered !== was) {
+        const cv = document.querySelector('canvas');
+        if (cv) cv.style.cursor = this._gripHovered ? 'nwse-resize' : '';
+      }
+    }
+  }
+
+  mousePressed() {
+    if (!this._inBounds(mouseX, mouseY)) return;
+
+    if (this._inClrBtn(mouseX, mouseY)) { this.clear(); return; }
+
+    if (this.movable && mouseY < this.y + this._titleH) {
+      this._draggingPanel = true;
+      this._dragPanelOff  = { dx: mouseX - this.x, dy: mouseY - this.y };
+      return;
+    }
+
+    if (this._inResizeHandle(mouseX, mouseY)) { this._resizing = true; return; }
+
+    if (this._needsScroll() && mouseX >= this.x + this.width - this._sbW) {
+      this._dragSB    = true;
+      this._dragSBRef = { my: mouseY, scrollY: this._scrollY };
+    }
+  }
+
+  mouseReleased() {
+    if (this._resizing) {
+      this._resizing = this._gripHovered = false;
+      const cv = document.querySelector('canvas');
+      if (cv) cv.style.cursor = '';
+    }
+    this._draggingPanel = false;
+    this._dragPanelOff  = null;
+    this._dragSB        = false;
+    this._dragSBRef     = null;
+  }
+
+  mouseWheel(e) {
+    if (!this._inBounds(mouseX, mouseY)) return;
+    const dy = e.deltaY ?? e.delta ?? 0;
+    this._scrollY    = constrain(this._scrollY + dy * 0.4, 0, this._maxScrollY());
+    this._autoScroll = this._scrollY >= this._maxScrollY() - 2;
+    return false;
+  }
+}
+
+window.ConsolePanel = ConsolePanel;
