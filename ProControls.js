@@ -1,6 +1,6 @@
 // ProControls.js — base class + Slider for p5.js
 // Copyright © David Stein 2026
-// Last updated: 2026-05-18 13:34 — commit dbb85ac
+// Last updated: 2026-05-18 17:30 — commit 8def0fb
 
 // Set ControlStyle before creating controls to choose a built-in look.
 // Per-control overrides still work via opts.theme.
@@ -6776,6 +6776,12 @@ function _fmtNum(v) {
   return v.toPrecision(2);
 }
 
+function _fmtTime(s) {
+  if (s < 60) return (s < 10 ? s.toFixed(1) : s.toFixed(0)) + 's';
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
 class TimeGraphPanel extends ProControl {
   constructor(opts = {}) {
     super(Object.assign({ min: 0, max: 1, value: 0 }, opts));
@@ -6788,12 +6794,13 @@ class TimeGraphPanel extends ProControl {
     this.minimizable = opts.minimizable !== false;
     this._minimized  = opts.minimized   ?? false;
 
-    this._maxSamples = opts.maxSamples ?? 200;
-    this._yMin       = opts.min !== undefined ? opts.min : null;
-    this._yMax       = opts.max !== undefined ? opts.max : null;
-    this._lineWidth  = opts.lineWidth  ?? 1.5;
-    this._showGrid   = opts.grid       !== false;
-    this._showLegend = opts.legend     !== false;
+    this._maxSamples  = opts.maxSamples  ?? 200;
+    this._yMin        = opts.min !== undefined ? opts.min : null;
+    this._yMax        = opts.max !== undefined ? opts.max : null;
+    this._autoAdjustY = opts.autoAdjustY !== false;
+    this._lineWidth   = opts.lineWidth  ?? 1.5;
+    this._showGrid    = opts.grid       !== false;
+    this._showLegend  = opts.legend     !== false;
 
     this._data     = [];
     this._keys     = [];
@@ -6812,6 +6819,11 @@ class TimeGraphPanel extends ProControl {
     this._gripHovered   = false;
     this._draggingPanel = false;
     this._dragPanelOff  = null;
+
+    this._startTime  = null;
+    this._times      = [];
+    this._hoverFrac  = null;
+    this._hoverMouseX = null;
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -6834,19 +6846,26 @@ class TimeGraphPanel extends ProControl {
         this._keys = ['value'];
       }
     }
+    if (this._startTime === null) this._startTime = Date.now();
+    const ts = (Date.now() - this._startTime) / 1000;
     this._data.push(value);
-    if (this._data.length > this._maxSamples) this._data.shift();
+    this._times.push(ts);
+    if (this._data.length  > this._maxSamples) this._data.shift();
+    if (this._times.length > this._maxSamples) this._times.shift();
   }
 
   clear() {
     this._data = []; this._keys = []; this._colorMap = {}; this._isObj = false;
+    this._times = []; this._startTime = null; this._hoverFrac = null; this._hoverMouseX = null;
   }
 
-  get visible()    { return this._visible; }
-  set visible(v)   { this._visible = !!v; }
-  get minimized()  { return this._minimized; }
-  set minimized(v) { this._minimized = !!v; }
-  get data()       { return [...this._data]; }
+  get visible()       { return this._visible; }
+  set visible(v)      { this._visible = !!v; }
+  get minimized()     { return this._minimized; }
+  set minimized(v)    { this._minimized = !!v; }
+  get autoAdjustY()   { return this._autoAdjustY; }
+  set autoAdjustY(v)  { this._autoAdjustY = !!v; }
+  get data()          { return [...this._data]; }
 
   // ── Geometry ──────────────────────────────────────────────────────────────
 
@@ -6876,39 +6895,51 @@ class TimeGraphPanel extends ProControl {
            my >= this.y + this.height - this._gripSz && my <= this.y + this.height;
   }
 
-  // Plot area: leaves a left margin for Y-axis labels
+  // Plot area: left margin for Y labels, bottom margin for X time labels
   _plotRect() {
-    const labW = 32;
+    const labW = 32, xLabH = 14;
     return {
       px: this.x + labW,
       py: this.y + this._titleH + 4,
       pw: this.width  - labW - 5,
-      ph: this.height - this._titleH - 8,
+      ph: this.height - this._titleH - 6 - xLabH,
     };
   }
 
-  _dataRange() {
-    if (this._yMin !== null && this._yMax !== null) {
-      return { lo: this._yMin, hi: this._yMax };
-    }
-    let lo = Infinity, hi = -Infinity;
-    for (const d of this._data) {
-      if (this._isObj) {
-        for (const k of this._keys) {
-          const v = d[k];
-          if (typeof v === 'number') { lo = Math.min(lo, v); hi = Math.max(hi, v); }
-        }
-      } else if (typeof d === 'number') {
-        lo = Math.min(lo, d); hi = Math.max(hi, d);
+  // Returns { perKey: bool, ranges: {key: {lo,hi}} }
+  // perKey=true when autoAdjustY is on and multiple variables are present —
+  // each variable is normalised independently so all fit the plot height.
+  _computeRanges() {
+    const keyRange = key => {
+      let lo = Infinity, hi = -Infinity;
+      for (const d of this._data) {
+        const v = this._isObj ? d[key] : d;
+        if (typeof v === 'number') { lo = Math.min(lo, v); hi = Math.max(hi, v); }
       }
-    }
-    if (!isFinite(lo))  { lo = 0; hi = 1; }
-    if (lo === hi)       { lo -= 0.5; hi += 0.5; }
-    const pad = (hi - lo) * 0.08;
-    return {
-      lo: this._yMin !== null ? this._yMin : lo - pad,
-      hi: this._yMax !== null ? this._yMax : hi + pad,
+      if (!isFinite(lo)) { lo = 0; hi = 1; }
+      if (lo === hi)      { lo -= 0.5; hi += 0.5; }
+      return { lo, hi };
     };
+
+    if (!this._autoAdjustY) {
+      const r = { lo: this._yMin ?? 0, hi: this._yMax ?? 1 };
+      const ranges = {};
+      for (const k of this._keys) ranges[k] = r;
+      return { perKey: false, ranges };
+    }
+
+    if (this._isObj && this._keys.length > 1) {
+      const ranges = {};
+      for (const k of this._keys) ranges[k] = keyRange(k);
+      return { perKey: true, ranges };
+    }
+
+    // Single variable — shared range
+    const key = this._isObj ? this._keys[0] : 'value';
+    const r = this._keys.length ? keyRange(key) : { lo: 0, hi: 1 };
+    const ranges = {};
+    for (const k of this._keys) ranges[k] = r;
+    return { perKey: false, ranges };
   }
 
   // ── Drawing ───────────────────────────────────────────────────────────────
@@ -6927,8 +6958,8 @@ class TimeGraphPanel extends ProControl {
     if (this.minimizable) this._drawToggleBtn();
     if (this._minimized) return;
 
-    const { px, py, pw, ph } = this._plotRect();
-    const { lo, hi }         = this._dataRange();
+    const { px, py, pw, ph }    = this._plotRect();
+    const { perKey, ranges }    = this._computeRanges();
 
     const gc = drawingContext;
     gc.save();
@@ -6944,12 +6975,17 @@ class TimeGraphPanel extends ProControl {
     pop();
 
     if (this._showGrid)         this._drawGrid(px, py, pw, ph);
-    if (this._data.length >= 2) this._drawLines(px, py, pw, ph, lo, hi);
+    if (this._data.length >= 2) this._drawLines(px, py, pw, ph, ranges);
+    if (this._hoverFrac !== null && this._data.length >= 2)
+      this._drawHoverOverlay(px, py, pw, ph, ranges);
 
     gc.restore();
 
-    this._drawYAxis(px, py, pw, ph, lo, hi);
+    this._drawYAxis(px, py, pw, ph, ranges, perKey);
+    this._drawXAxis(px, py, pw, ph);
     if (this._showLegend && this._keys.length > 1) this._drawLegend(px, py, pw, ph);
+    if (this._hoverFrac !== null && this._data.length >= 2)
+      this._drawHoverTooltip(px, py, pw, ph);
     if (this.resizable) this._drawResizeGrip();
   }
 
@@ -6966,10 +7002,17 @@ class TimeGraphPanel extends ProControl {
     pop();
   }
 
-  _drawLines(px, py, pw, ph, lo, hi) {
+  _drawLines(px, py, pw, ph, ranges) {
     const n  = this._data.length;
-    const dx = pw / (n - 1);
+    const t0 = this._times[0]     ?? 0;
+    const t1 = this._times[n - 1] ?? 0;
+    const tSpan = t1 - t0;
+    const xOf = i => tSpan > 0
+      ? px + ((this._times[i] - t0) / tSpan) * pw
+      : px + (i / (n - 1)) * pw;
+
     for (const key of this._keys) {
+      const { lo, hi } = ranges[key];
       push();
       stroke(this._colorMap[key]);
       strokeWeight(this._lineWidth);
@@ -6984,7 +7027,7 @@ class TimeGraphPanel extends ProControl {
           continue;
         }
         const sy = constrain(py + ph - ((v - lo) / (hi - lo)) * ph, py - 1, py + ph + 1);
-        vertex(px + i * dx, sy);
+        vertex(xOf(i), sy);
         open = true;
       }
       if (open) endShape();
@@ -6992,7 +7035,7 @@ class TimeGraphPanel extends ProControl {
     }
   }
 
-  _drawYAxis(px, py, pw, ph, lo, hi) {
+  _drawYAxis(px, py, pw, ph, ranges, perKey) {
     const { theme } = this;
     push();
     textSize(8);
@@ -7000,15 +7043,79 @@ class TimeGraphPanel extends ProControl {
     textAlign(RIGHT, CENTER);
     noStroke();
     fill(theme.label);
-    for (let i = 0; i <= 4; i++) {
-      const t  = i / 4;
-      const sy = py + ph - t * ph;
-      text(_fmtNum(lo + t * (hi - lo)), px - 3, sy);
+    if (perKey) {
+      // Normalised per-variable mode — Y axis shows percentage ticks
+      const PCT = ['0%', '25%', '50%', '75%', '100%'];
+      for (let i = 0; i <= 4; i++) {
+        const sy = py + ph - (i / 4) * ph;
+        text(PCT[i], px - 3, sy);
+      }
+    } else {
+      const firstKey = this._keys[0] ?? 'value';
+      const { lo, hi } = ranges[firstKey] ?? { lo: 0, hi: 1 };
+      for (let i = 0; i <= 4; i++) {
+        const t  = i / 4;
+        const sy = py + ph - t * ph;
+        text(_fmtNum(lo + t * (hi - lo)), px - 3, sy);
+      }
     }
     strokeWeight(0.5);
     stroke(lerpColor(color(theme.panel), color(theme.panelStroke), 0.7));
     line(px, py, px, py + ph);
     pop();
+  }
+
+  _drawXAxis(px, py, pw, ph) {
+    const n = this._times.length;
+    if (n < 2) return;
+    const t0 = this._times[0];
+    const t1 = this._times[n - 1];
+    const span = t1 - t0;
+    if (span <= 0) return;
+
+    const { theme } = this;
+    const axisY = py + ph;
+
+    // Compute a nice tick interval targeting ~4 ticks
+    const steps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+    const raw = span / 4;
+    const interval = steps.find(s => s >= raw) ?? steps[steps.length - 1];
+    const firstTick = Math.ceil(t0 / interval) * interval;
+
+    push();
+    textSize(7);
+    if (theme.font) textFont(theme.font);
+    const axisCol = lerpColor(color(theme.panel), color(theme.panelStroke), 0.7);
+    strokeWeight(0.5);
+    stroke(axisCol);
+    line(px, axisY, px + pw, axisY);
+
+    for (let t = firstTick; t <= t1 + interval * 0.01; t += interval) {
+      if (t < t0) continue;
+      const tx = px + ((t - t0) / span) * pw;
+      if (tx > px + pw + 1) break;
+      stroke(axisCol); strokeWeight(0.5);
+      line(tx, axisY, tx, axisY + 3);
+      noStroke();
+      fill(theme.label);
+      textAlign(CENTER, TOP);
+      text(_fmtTime(t), tx, axisY + 4);
+    }
+    pop();
+  }
+
+  _timeToFrac(t) {
+    const n = this._times.length;
+    if (n === 0) return 0;
+    if (t <= this._times[0])     return 0;
+    if (t >= this._times[n - 1]) return n - 1;
+    let lo = 0, hi = n - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (this._times[mid] <= t) lo = mid; else hi = mid;
+    }
+    const span = this._times[hi] - this._times[lo];
+    return span > 0 ? lo + (t - this._times[lo]) / span : lo;
   }
 
   _drawLegend(px, py, pw, ph) {
@@ -7038,6 +7145,95 @@ class TimeGraphPanel extends ProControl {
       rect(lx - bgW + padX, ry + 1, swSz, swSz - 2, 1);
       fill(theme.label);
       text(k, lx - bgW + padX + swSz + gap, ry);
+    }
+    pop();
+  }
+
+  _getHoverInfo(frac) {
+    const i0 = Math.floor(frac);
+    const i1 = Math.min(i0 + 1, this._data.length - 1);
+    const t  = frac - i0;
+    const t0 = this._times[i0] ?? 0;
+    const t1 = this._times[i1] ?? t0;
+    const hoverTime = t0 + (t1 - t0) * t;
+    const values = {};
+    for (const key of this._keys) {
+      const v0 = this._isObj ? (this._data[i0]?.[key] ?? null) : this._data[i0];
+      const v1 = this._isObj ? (this._data[i1]?.[key] ?? null) : this._data[i1];
+      if (typeof v0 === 'number' && typeof v1 === 'number') values[key] = v0 + (v1 - v0) * t;
+      else if (typeof v0 === 'number')                       values[key] = v0;
+      else                                                   values[key] = null;
+    }
+    return { hoverTime, values };
+  }
+
+  _drawHoverOverlay(px, py, pw, ph, ranges) {
+    const sx = this._hoverMouseX;
+    if (sx === null) return;
+    const { values } = this._getHoverInfo(this._hoverFrac);
+    push();
+    strokeWeight(1);
+    stroke(255, 255, 255, 70);
+    line(sx, py, sx, py + ph);
+    for (const key of this._keys) {
+      const v = values[key];
+      if (v === null) continue;
+      const { lo, hi } = ranges[key];
+      const sy = constrain(py + ph - ((v - lo) / (hi - lo)) * ph, py, py + ph);
+      noStroke();
+      fill(this._colorMap[key]);
+      ellipse(sx, sy, 6, 6);
+      noFill();
+      stroke(255, 255, 255, 150);
+      strokeWeight(1);
+      ellipse(sx, sy, 9, 9);
+    }
+    pop();
+  }
+
+  _drawHoverTooltip(px, py, pw, ph) {
+    const sx = this._hoverMouseX;
+    if (sx === null) return;
+    const { theme } = this;
+    const { hoverTime, values } = this._getHoverInfo(this._hoverFrac);
+
+    const timeStr = hoverTime.toFixed(1) + 's';
+    const lines   = this._keys.length === 1
+      ? [timeStr + (values[this._keys[0]] !== null ? '  ' + _fmtNum(values[this._keys[0]]) : '')]
+      : [timeStr, ...this._keys.filter(k => values[k] !== null)
+                               .map(k => k + ': ' + _fmtNum(values[k]))];
+
+    push();
+    textSize(9);
+    if (theme.font) textFont(theme.font);
+    const padX = 5, padY = 4, rowH = 11;
+    let maxW = 0;
+    for (const l of lines) maxW = Math.max(maxW, textWidth(l));
+    const bw = maxW + padX * 2;
+    const bh = lines.length * rowH + padY * 2;
+
+    const MARGIN = 6;
+    let tx = sx + MARGIN;
+    if (tx + bw > px + pw) tx = sx - MARGIN - bw;
+    const ty = py + MARGIN;
+
+    const pc = color(theme.panel);
+    fill(red(pc), green(pc), blue(pc), 235);
+    stroke(theme.panelStroke);
+    strokeWeight(0.5);
+    rect(tx, ty, bw, bh, 3);
+
+    noStroke();
+    textAlign(LEFT, TOP);
+    const visibleKeys = this._keys.filter(k => values[k] !== null);
+    for (let i = 0; i < lines.length; i++) {
+      if (i === 0) {
+        fill(theme.capHighlight ?? theme.label);
+      } else {
+        const key = visibleKeys[i - 1];
+        fill(key ? this._colorMap[key] : theme.label);
+      }
+      text(lines[i], tx + padX, ty + padY + i * rowH);
     }
     pop();
   }
@@ -7104,6 +7300,29 @@ class TimeGraphPanel extends ProControl {
         const cv = document.querySelector('canvas');
         if (cv) cv.style.cursor = this._gripHovered ? 'nwse-resize' : '';
       }
+    }
+
+    if (!this._minimized && this._data.length >= 2) {
+      const { px, py, pw, ph } = this._plotRect();
+      if (mouseX >= px && mouseX <= px + pw && mouseY >= py && mouseY <= py + ph) {
+        this._hoverMouseX = mouseX;
+        const n    = this._times.length;
+        const t0   = this._times[0]     ?? 0;
+        const t1   = this._times[n - 1] ?? 0;
+        const span = t1 - t0;
+        if (span > 0) {
+          const hoverTime = t0 + ((mouseX - px) / pw) * span;
+          this._hoverFrac = this._timeToFrac(hoverTime);
+        } else {
+          this._hoverFrac = (mouseX - px) / pw * (this._data.length - 1);
+        }
+      } else {
+        this._hoverFrac = null;
+        this._hoverMouseX = null;
+      }
+    } else {
+      this._hoverFrac = null;
+      this._hoverMouseX = null;
     }
   }
 

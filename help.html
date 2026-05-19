@@ -2282,8 +2282,9 @@ for (let i = 0; i &lt; 5; i++) console.log('redraw tick');</textarea>
         <tr><td>height</td><td>number</td><td>200</td><td>Panel height in pixels.</td></tr>
         <tr><td>label</td><td>string</td><td>'Time Graph'</td><td>Text shown in the title bar.</td></tr>
         <tr><td>maxSamples</td><td>number</td><td>200</td><td>Maximum number of data points retained. Oldest points are discarded when the buffer is full.</td></tr>
-        <tr><td>min</td><td>number</td><td>auto</td><td>Fixed Y-axis minimum. Omit for auto-scaling.</td></tr>
-        <tr><td>max</td><td>number</td><td>auto</td><td>Fixed Y-axis maximum. Omit for auto-scaling.</td></tr>
+        <tr><td>autoAdjustY</td><td>boolean</td><td>true</td><td>Automatically fit the Y axis to the min/max of the data currently in the buffer. Set to <code>false</code> to use fixed <code>min</code>/<code>max</code> bounds instead.</td></tr>
+        <tr><td>min</td><td>number</td><td>0</td><td>Fixed Y-axis minimum. Only used when <code>autoAdjustY</code> is <code>false</code>.</td></tr>
+        <tr><td>max</td><td>number</td><td>1</td><td>Fixed Y-axis maximum. Only used when <code>autoAdjustY</code> is <code>false</code>.</td></tr>
         <tr><td>lineWidth</td><td>number</td><td>1.5</td><td>Stroke weight for data lines in pixels.</td></tr>
         <tr><td>grid</td><td>boolean</td><td>true</td><td>Show horizontal grid lines at 25%, 50%, and 75% of the Y range.</td></tr>
         <tr><td>legend</td><td>boolean</td><td>true</td><td>Show a color legend in the top-right corner of the plot (only visible when graphing multiple variables).</td></tr>
@@ -2301,6 +2302,7 @@ for (let i = 0; i &lt; 5; i++) console.log('redraw tick');</textarea>
       <tbody>
         <tr><td><code>.push(value)</code></td><td>Add a data point. Pass a <code>number</code> for single-variable mode, or a plain object (<code>{key: value, …}</code>) for multi-variable mode. Switching between modes resets the data buffer.</td></tr>
         <tr><td><code>.clear()</code></td><td>Remove all data points and reset variable tracking.</td></tr>
+        <tr><td><code>.autoAdjustY</code></td><td>Get or set whether the Y axis auto-fits to the data range (<code>true</code>) or uses fixed bounds (<code>false</code>).</td></tr>
         <tr><td><code>.data</code></td><td>Read-only getter. Returns a shallow copy of the current data array.</td></tr>
         <tr><td><code>.minimized</code></td><td>Get/set. Collapses the panel to just the title bar when <code>true</code>.</td></tr>
         <tr><td><code>.visible</code></td><td>Get/set. Hides the panel and suppresses events when <code>false</code>.</td></tr>
